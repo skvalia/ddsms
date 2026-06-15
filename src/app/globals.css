@@ -1,0 +1,106 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+:root {
+  /* Base surfaces */
+  --color-paper: #faf8f4;
+  --color-surface: #ffffff;
+  --color-ink: #1c1a17;
+  --color-ink-soft: #5c5650;
+  --color-line: #e6e1d8;
+
+  /* Brand / accent - warm thread-spool amber, evokes embroidery thread */
+  --color-thread: #c4621a;
+  --color-thread-soft: #f3e2d2;
+
+  /* Status colors - high contrast, scannable from a distance */
+  --color-status-ytr: #8a8478;
+  --color-status-onmachine: #2563eb;
+  --color-status-issue: #dc2626;
+  --color-status-mending: #d97706;
+  --color-status-dyeing: #7c3aed;
+  --color-status-packing: #0891b2;
+  --color-status-done: #16a34a;
+  --color-status-outsource: #be185d;
+  --color-status-completed: #15803d;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-line: var(--color-line);
+  --color-thread: var(--color-thread);
+  --color-thread-soft: var(--color-thread-soft);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+}
+
+/* Status pill helper classes */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* Focus visibility */
+:focus-visible {
+  outline: 2px solid var(--color-thread);
+  outline-offset: 2px;
+}
+
+/* Scrollbar - subtle */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
