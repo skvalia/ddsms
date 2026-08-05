@@ -24,7 +24,8 @@ import {
   type SsrStatus,
   type IssueType,
 } from "@/types/database";
-import { ChevronLeft, Send, Loader2 } from "lucide-react";
+import { ChevronLeft, Send, Loader2, Pencil } from "lucide-react";
+import { CostingPanel } from "./CostingPanel";
 import { format } from "date-fns";
 
 export function SsrDetailClient({
@@ -52,6 +53,7 @@ export function SsrDetailClient({
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"details"|"costing">("details");
   const [remarks, setRemarks] = useState("");
   const [uploadStage, setUploadStage] = useState<SsrFileStage>(
     defaultStageForStatus(ssr.status)
@@ -373,6 +375,8 @@ export function SsrDetailClient({
           )}
         </div>
       </div>
+    </>
+    }
     </div>
   );
 }
@@ -383,6 +387,8 @@ function DetailItem({ label, value }: { label: string; value?: string | null }) 
     <div>
       <dt className="text-xs text-(--color-ink-soft)">{label}</dt>
       <dd className="font-medium mt-0.5">{value}</dd>
+    </>
+    }
     </div>
   );
 }
