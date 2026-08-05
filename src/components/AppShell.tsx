@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: "/sketches", label: "Sketches", icon: PencilRuler },
   { href: "/dssr", label: "DSSR", icon: FileStack },
   { href: "/ssr", label: "SSR", icon: ListChecks },
-  { href: "/library", label: "Design Library", icon: Library },
+  { href: "/library", label: "Design Library", icon: Images },
 ];
 
 export function AppShell({
