@@ -3,16 +3,23 @@ import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function InspirationDetailPage({ params }: { params: { id: string } }) {
+export default async function InspirationDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("users").select("full_name").eq("id", user?.id ?? "").maybeSingle();
+  const { data: profile } = await supabase
+    .from("users").select("full_name")
+    .eq("id", user?.id ?? "").maybeSingle();
   const userName = profile?.full_name || user?.email || "User";
 
   const { data: insp } = await supabase
     .from("inspirations")
     .select("*, party:parties(name)")
-    .eq("id", params.id)
+    .eq("id", id)
     .maybeSingle();
 
   if (!insp) return notFound();
@@ -20,7 +27,7 @@ export default async function InspirationDetailPage({ params }: { params: { id: 
   const { data: sketches } = await supabase
     .from("sketches")
     .select("*")
-    .eq("inspiration_id", params.id)
+    .eq("inspiration_id", id)
     .order("created_at", { ascending: false });
 
   const photoUrl = insp.photo_path
@@ -34,14 +41,12 @@ export default async function InspirationDetailPage({ params }: { params: { id: 
           <Link href="/inspirations" className="text-sm text-stone-500">← Inspirations</Link>
         </div>
 
-        {/* Photo */}
         {photoUrl && (
           <div className="rounded-2xl overflow-hidden mb-5 border border-stone-200">
             <img src={photoUrl} alt={insp.concept_name} className="w-full object-cover max-h-72" />
           </div>
         )}
 
-        {/* Header */}
         <div className="mb-5">
           <h1 className="text-2xl font-bold tracking-tight">{insp.concept_name}</h1>
           <div className="flex flex-wrap gap-3 mt-2 text-sm text-stone-500">
@@ -49,16 +54,17 @@ export default async function InspirationDetailPage({ params }: { params: { id: 
             {insp.season && <span>📅 {insp.season}</span>}
             {insp.design_count && <span>🎨 {insp.design_count} designs planned</span>}
           </div>
-          {insp.notes && <p className="mt-3 text-sm text-stone-600 bg-stone-50 rounded-xl px-4 py-3">{insp.notes}</p>}
+          {insp.notes && (
+            <p className="mt-3 text-sm text-stone-600 bg-stone-50 rounded-xl px-4 py-3">{insp.notes}</p>
+          )}
         </div>
 
-        {/* Sketches */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-stone-400">
               Sketches ({sketches?.length ?? 0})
             </h2>
-            <Link href={`/sketches/new?inspiration=${params.id}`}
+            <Link href={`/sketches/new?inspiration=${id}`}
               className="text-sm font-semibold text-amber-700">
               + Add Sketch
             </Link>
@@ -81,7 +87,7 @@ export default async function InspirationDetailPage({ params }: { params: { id: 
           ) : (
             <div className="text-center py-8 border-2 border-dashed border-stone-200 rounded-2xl">
               <p className="text-sm text-stone-400 mb-2">No sketches yet for this concept</p>
-              <Link href={`/sketches/new?inspiration=${params.id}`}
+              <Link href={`/sketches/new?inspiration=${id}`}
                 className="text-sm font-semibold text-amber-700">
                 Add first sketch →
               </Link>
