@@ -5,13 +5,16 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Plus, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type Table = "parties" | "yarns" | "fabrics";
+type Table = "parties" | "yarns" | "fabrics" | "design_types" | "sketch_artists" | "designers";
 type Row = { id: string; name: string };
 
 const TABS: { key: Table; label: string; desc: string }[] = [
   { key: "parties", label: "Parties", desc: "Customers and buyers" },
   { key: "yarns", label: "Yarns", desc: "Front and back yarn types" },
-  { key: "fabrics", label: "Fabrics", desc: "Fabric types and qualities" },
+  { key: "fabrics", label: "Fabrics", desc: "Fabric types" },
+  { key: "design_types", label: "Design Types", desc: "Allover, Border, Placement etc." },
+  { key: "sketch_artists", label: "Sketch Artists", desc: "Who sketches designs" },
+  { key: "designers", label: "Designers", desc: "CAD/digitising team" },
 ];
 
 export default function MasterDataPage() {
@@ -54,9 +57,11 @@ export default function MasterDataPage() {
 
   async function del(id: string) {
     const { error: err } = await supabase.from(tab).delete().eq("id", id);
-    if (err) setError("Can't delete — this item is used by existing records. Rename it instead.");
+    if (err) setError("Cannot delete — item is used by existing records. Rename instead.");
     else setRows((r) => r.filter((row) => row.id !== id));
   }
+
+  const currentTab = TABS.find(t => t.key === tab)!;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -64,29 +69,33 @@ export default function MasterDataPage() {
         <ChevronLeft className="w-4 h-4" /> Back
       </button>
       <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Data</h1>
-      <p className="text-sm text-stone-500 mb-6">Add, rename, or remove parties, yarns, and fabrics.</p>
+      <p className="text-sm text-stone-500 mb-5">Add, rename, or remove master data used across the system.</p>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-stone-100 border border-stone-200 rounded-xl p-1 w-fit">
+      {/* Tabs — scrollable on mobile */}
+      <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setError(null); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? "bg-white shadow-sm text-stone-800" : "text-stone-500"}`}>
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+              tab === t.key
+                ? "bg-amber-700 text-white border-amber-700"
+                : "bg-white text-stone-500 border-stone-200"
+            }`}>
             {t.label}
           </button>
         ))}
       </div>
 
+      <p className="text-xs text-stone-400 mb-3">{currentTab.desc}</p>
+
       {/* Add new */}
       <div className="flex gap-2 mb-4">
         <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder={`Add new ${tab.slice(0, -1)}...`}
-          className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
-        />
+          placeholder={`Add new ${currentTab.label.toLowerCase().slice(0, -1)}...`}
+          className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600" />
         <button onClick={add} disabled={adding || !newName.trim()}
           className="rounded-xl bg-amber-700 text-white px-4 flex items-center gap-1.5 text-sm font-semibold disabled:opacity-50">
-          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Add
+          {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
         </button>
       </div>
 
@@ -116,7 +125,7 @@ export default function MasterDataPage() {
             </div>
           ))}
           {rows.length === 0 && (
-            <p className="px-4 py-8 text-sm text-stone-400 text-center">No {tab} yet — add one above.</p>
+            <p className="px-4 py-8 text-sm text-stone-400 text-center">No {currentTab.label.toLowerCase()} yet — add one above.</p>
           )}
         </div>
       )}
