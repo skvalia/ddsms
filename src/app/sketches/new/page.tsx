@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { ChevronLeft, Loader2, ImageIcon, X } from "lucide-react";
 
 const INPUT = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600";
@@ -26,10 +27,11 @@ function NewSketchForm() {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
   const [inspirations, setInspirations] = useState<{id:string;concept_name:string}[]>([]);
+  const [sketchArtists, setSketchArtists] = useState<SelectOption[]>([]);
   const [inspirationId, setInspirationId] = useState<string | null>(null);
+  const [sketchArtistId, setSketchArtistId] = useState<string | null>(null);
   const [sketchNumber, setSketchNumber] = useState("");
   const [description, setDescription] = useState("");
-  const [sketchedBy, setSketchedBy] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("Draft");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -39,24 +41,33 @@ function NewSketchForm() {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       setUserId(auth.user?.id ?? "");
-      const { data: insp } = await supabase
-        .from("inspirations")
-        .select("id, concept_name")
-        .order("created_at", { ascending: false });
+
+      const [{ data: insp }, { data: artists }, { data: pendingCounts }, { data: last }] = await Promise.all([
+        supabase.from("inspirations").select("id, concept_name").order("created_at", { ascending: false }),
+        supabase.from("sketch_artists").select("id, name").order("name"),
+        supabase.from("sketches").select("sketch_artist_id").not("sketch_artist_id", "is", null).in("status", ["Draft", "In Progress"]),
+        supabase.from("sketches").select("sketch_number").order("created_at", { ascending: false }).limit(1),
+      ]);
+
       setInspirations(insp ?? []);
+
+      // Count pending sketches per artist
+      const pendingMap: Record<string, number> = {};
+      (pendingCounts ?? []).forEach((r: any) => {
+        if (r.sketch_artist_id) pendingMap[r.sketch_artist_id] = (pendingMap[r.sketch_artist_id] || 0) + 1;
+      });
+      setSketchArtists((artists ?? []).map((a: any) => ({
+        id: a.id, name: a.name,
+        badge: pendingMap[a.id] ? String(pendingMap[a.id]) : undefined,
+      })));
+
       const inspParam = params.get("inspiration");
       if (inspParam) setInspirationId(inspParam);
 
       // Auto-generate sketch number
-      const { data: last } = await supabase
-        .from("sketches")
-        .select("sketch_number")
-        .order("created_at", { ascending: false })
-        .limit(1);
       if (last && last.length > 0 && last[0].sketch_number) {
         const num = parseInt(last[0].sketch_number.replace(/\D/g, ""));
-        if (!isNaN(num)) setSketchNumber(`SK-${num + 1}`);
-        else setSketchNumber("SK-1001");
+        setSketchNumber(!isNaN(num) ? `SK-${num + 1}` : "SK-1001");
       } else {
         setSketchNumber("SK-1001");
       }
@@ -77,76 +88,49 @@ function NewSketchForm() {
     setSaving(true);
 
     let photoPath: string | null = null;
-
     if (photo) {
       const ext = photo.name.split(".").pop();
       const path = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("sketch-files")
-        .upload(path, photo);
-      if (uploadError) {
-        setError("Photo upload failed: " + uploadError.message);
-        setSaving(false);
-        return;
-      }
+      const { error: uploadError } = await supabase.storage.from("sketch-files").upload(path, photo);
+      if (uploadError) { setError("Photo upload failed: " + uploadError.message); setSaving(false); return; }
       photoPath = path;
     }
 
-    // Build insert data explicitly to bypass schema cache
     const insertData: Record<string, unknown> = {
       sketch_number: sketchNumber || null,
       description: description || null,
-      sketched_by: sketchedBy || null,
       notes: notes || null,
-      status: status,
+      status,
       photo_path: photoPath,
     };
     if (inspirationId) insertData.inspiration_id = inspirationId;
+    if (sketchArtistId) insertData.sketch_artist_id = sketchArtistId;
     if (userId) insertData.created_by = userId;
 
-    const { data, error: insertError } = await supabase
-      .from("sketches")
-      .insert(insertData)
-      .select("id")
-      .single();
+    const { error: insertError } = await supabase.from("sketches").insert(insertData).select("id").single();
+    if (insertError) { setError(insertError.message); setSaving(false); return; }
 
-    if (insertError) {
-      setError(insertError.message);
-      setSaving(false);
-      return;
-    }
-
-    // Go back to inspiration if came from there
-    if (inspirationId) {
-      router.push(`/inspirations/${inspirationId}`);
-    } else {
-      router.push("/sketches");
-    }
+    if (inspirationId) router.push(`/inspirations/${inspirationId}`);
+    else router.push("/sketches");
   }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-16">
-      <button onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-stone-500 mb-5 -ml-1">
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-stone-500 mb-5 -ml-1">
         <ChevronLeft className="w-4 h-4" /> Back
       </button>
-
       <h1 className="text-2xl font-bold tracking-tight mb-6">New Sketch</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-
         {/* Photo */}
         <div className="bg-white border border-stone-200 rounded-2xl p-4">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
-            Sketch Photo
-          </label>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Sketch Photo</label>
           <div onClick={() => fileRef.current?.click()}
             className="border-2 border-dashed border-stone-200 rounded-xl aspect-video flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 transition-colors overflow-hidden relative">
             {photoPreview ? (
               <>
                 <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
-                <button type="button"
-                  onClick={(e) => { e.stopPropagation(); setPhoto(null); setPhotoPreview(null); }}
+                <button type="button" onClick={(e) => { e.stopPropagation(); setPhoto(null); setPhotoPreview(null); }}
                   className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
                   <X className="w-4 h-4 text-stone-600" />
                 </button>
@@ -166,29 +150,25 @@ function NewSketchForm() {
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400">Sketch Details</h2>
 
           <Field label="Linked Inspiration — optional">
-            <select value={inspirationId || ""}
-              onChange={(e) => setInspirationId(e.target.value || null)}
-              className={INPUT}>
+            <select value={inspirationId || ""} onChange={(e) => setInspirationId(e.target.value || null)} className={INPUT}>
               <option value="">Select inspiration...</option>
-              {inspirations.map((i) => (
-                <option key={i.id} value={i.id}>{i.concept_name}</option>
-              ))}
+              {inspirations.map((i) => <option key={i.id} value={i.id}>{i.concept_name}</option>)}
             </select>
           </Field>
 
           <Field label="Sketch Number">
-            <input value={sketchNumber} onChange={(e) => setSketchNumber(e.target.value)}
-              className={INPUT} />
+            <input value={sketchNumber} onChange={(e) => setSketchNumber(e.target.value)} className={INPUT} />
           </Field>
+
+          <SearchableSelect label="Sketched By" table="sketch_artists"
+            value={sketchArtistId} onChange={setSketchArtistId}
+            options={sketchArtists} setOptions={setSketchArtists}
+            placeholder="Select or add sketch artist..."
+            hint="Badge shows their current pending sketches" />
 
           <Field label="Description">
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
               rows={2} className={INPUT + " resize-none"} />
-          </Field>
-
-          <Field label="Sketched By">
-            <input value={sketchedBy} onChange={(e) => setSketchedBy(e.target.value)}
-              className={INPUT} />
           </Field>
 
           <Field label="Notes">
@@ -206,11 +186,7 @@ function NewSketchForm() {
           </Field>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
+        {error && <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3"><p className="text-sm text-red-600">{error}</p></div>}
 
         <button type="submit" disabled={saving}
           className="w-full bg-amber-700 text-white rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
