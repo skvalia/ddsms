@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Search, Check, X } from "lucide-react";
 
 const INPUT = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600";
 
@@ -31,11 +31,12 @@ function NewDssrForm() {
 
   const [parties, setParties] = useState<SelectOption[]>([]);
   const [designTypes, setDesignTypes] = useState<SelectOption[]>([]);
+  const [designers, setDesigners] = useState<SelectOption[]>([]);
 
   const [partyId, setPartyId] = useState<string | null>(null);
   const [designTypeId, setDesignTypeId] = useState<string | null>(null);
+  const [designerId, setDesignerId] = useState<string | null>(null);
   const [designNumber, setDesignNumber] = useState("");
-  const [designer, setDesigner] = useState("");
   const [description, setDescription] = useState("");
   const [remarks, setRemarks] = useState("");
   const [sketchId, setSketchId] = useState<string | null>(null);
@@ -45,22 +46,33 @@ function NewDssrForm() {
       const { data: auth } = await supabase.auth.getUser();
       setUserId(auth.user?.id ?? "");
 
-      const [{ data: p }, { data: dt }, { data: lastDssr }] = await Promise.all([
+      const [{ data: p }, { data: dt }, { data: des }, { data: lastDssr }, { data: pendingCounts }] = await Promise.all([
         supabase.from("parties").select("id, name").order("name"),
         supabase.from("design_types").select("id, name").order("name"),
+        supabase.from("designers").select("id, name").order("name"),
         supabase.from("dssr").select("dssr_number").order("created_at", { ascending: false }).limit(20),
+        supabase.from("dssr").select("designer_id").not("designer_id", "is", null).in("status", ["New", "CAD Development", "EMB Development"]),
       ]);
 
       setParties(p ?? []);
       setDesignTypes(dt ?? []);
 
-      // Auto-generate next DSSR number
+      // Count pending work per designer
+      const pendingMap: Record<string, number> = {};
+      (pendingCounts ?? []).forEach((r: any) => {
+        if (r.designer_id) pendingMap[r.designer_id] = (pendingMap[r.designer_id] || 0) + 1;
+      });
+      setDesigners((des ?? []).map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        badge: pendingMap[d.id] ? String(pendingMap[d.id]) : undefined,
+      })));
+
       const nums = (lastDssr ?? [])
         .map((r: any) => parseInt(r.dssr_number?.replace(/\D/g, "") ?? ""))
         .filter((n: number) => !isNaN(n));
       setNextNo(nums.length > 0 ? `D${Math.max(...nums) + 1}` : "D1001");
 
-      // Pre-fill from sketch if linked
       const sketchParam = params.get("sketch");
       if (sketchParam) setSketchId(sketchParam);
 
@@ -72,13 +84,11 @@ function NewDssrForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!designNumber.trim()) { setError("Design Number is required"); return; }
     setSaving(true);
 
     const insertData: Record<string, unknown> = {
       dssr_number: nextNo,
-      design_number: designNumber.trim(),
-      designer: designer || null,
+      design_number: designNumber.trim() || null,
       description: description || null,
       remarks: remarks || null,
       status: "New",
@@ -88,14 +98,12 @@ function NewDssrForm() {
       const dt = designTypes.find(d => d.id === designTypeId);
       if (dt) insertData.design_type = dt.name;
     }
+    if (designerId) insertData.designer_id = designerId;
     if (sketchId) insertData.sketch_id = sketchId;
     if (userId) insertData.created_by = userId;
 
     const { data, error: err } = await supabase
-      .from("dssr")
-      .insert(insertData)
-      .select("id")
-      .single();
+      .from("dssr").insert(insertData).select("id").single();
 
     if (err) { setError(err.message); setSaving(false); return; }
 
@@ -133,40 +141,30 @@ function NewDssrForm() {
         <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400">Design Details</h2>
 
-          <Field label="Design Number *"
-            hint="This is assigned AFTER the designer completes the CAD. Leave blank if not ready yet.">
+          <Field label="Design Number"
+            hint="Leave blank — filled in AFTER designer completes the CAD">
             <input value={designNumber} onChange={(e) => setDesignNumber(e.target.value)}
-              placeholder="e.g. KB-8-1007878" className={INPUT} />
+              placeholder="e.g. KB-8-1007878 — add later" className={INPUT} />
           </Field>
 
-          <SearchableSelect
-            label="Party"
-            table="parties"
-            value={partyId}
-            onChange={setPartyId}
-            options={parties}
-            setOptions={setParties}
-          />
+          <SearchableSelect label="Party" table="parties"
+            value={partyId} onChange={setPartyId}
+            options={parties} setOptions={setParties} />
 
-          <SearchableSelect
-            label="Design Type"
-            table="design_types"
-            value={designTypeId}
-            onChange={setDesignTypeId}
-            options={designTypes}
-            setOptions={setDesignTypes}
-            placeholder="e.g. Allover, Placement, Border..."
-          />
+          <SearchableSelect label="Design Type" table="design_types"
+            value={designTypeId} onChange={setDesignTypeId}
+            options={designTypes} setOptions={setDesignTypes}
+            placeholder="e.g. Allover, Border, Placement..." />
 
-          <Field label="Designer / Digitiser">
-            <input value={designer} onChange={(e) => setDesigner(e.target.value)}
-              placeholder="Name of designer" className={INPUT} />
-          </Field>
+          <SearchableSelect label="Assigned Designer" table="designers"
+            value={designerId} onChange={setDesignerId}
+            options={designers} setOptions={setDesigners}
+            placeholder="Select or add designer..."
+            hint="Badge shows their current pending work count" />
 
           <Field label="Description">
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-              rows={2} placeholder="Brief description of the design..."
-              className={INPUT + " resize-none"} />
+              rows={2} placeholder="Brief description..." className={INPUT + " resize-none"} />
           </Field>
 
           <Field label="Remarks">
