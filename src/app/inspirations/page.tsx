@@ -2,10 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
 export default async function InspirationsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("users").select("full_name").eq("id", user?.id ?? "").maybeSingle();
+  const { data: profile } = await supabase
+    .from("users").select("full_name")
+    .eq("id", user?.id ?? "").maybeSingle();
   const userName = profile?.full_name || user?.email || "User";
 
   const { data: inspirations } = await supabase
@@ -40,7 +44,7 @@ export default async function InspirationsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {inspirations.map((insp: any) => {
               const photoUrl = insp.photo_path
-                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/inspiration-files/${insp.photo_path}`
+                ? `${SUPABASE_URL}/storage/v1/object/public/inspiration-files/${insp.photo_path}`
                 : null;
               return (
                 <Link key={insp.id} href={`/inspirations/${insp.id}`}
