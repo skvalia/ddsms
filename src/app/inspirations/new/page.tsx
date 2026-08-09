@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { ChevronLeft, Loader2, Upload, X, ImageIcon } from "lucide-react";
 
 const INPUT = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600";
@@ -26,7 +25,7 @@ export default function NewInspirationPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
-  const [parties, setParties] = useState<SelectOption[]>([]);
+  const [parties, setParties] = useState<{id:string;name:string}[]>([]);
   const [partyId, setPartyId] = useState<string | null>(null);
   const [conceptName, setConceptName] = useState("");
   const [season, setSeason] = useState("");
@@ -55,45 +54,56 @@ export default function NewInspirationPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!conceptName.trim()) { setError("Concept name is required"); return; }
-    setSaving(true); setError(null);
+    setError(null);
+    setSaving(true);
 
     let photoPath: string | null = null;
 
-    // Upload photo if provided
+    // Upload photo if selected
     if (photo) {
       const ext = photo.name.split(".").pop();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
         .from("inspiration-files")
         .upload(path, photo);
-      if (upErr) { setError(`Photo upload failed: ${upErr.message}`); setSaving(false); return; }
+      if (uploadError) {
+        setError("Photo upload failed: " + uploadError.message);
+        setSaving(false);
+        return;
+      }
       photoPath = path;
     }
 
-    const { data, error: err } = await supabase.from("inspirations").insert({
+    // Insert using explicit column names to bypass schema cache
+    const insertData: Record<string, unknown> = {
       concept_name: conceptName.trim(),
-      party_id: partyId,
       season: season || null,
-      design_count: designCount ? parseInt(designCount) : null,
       notes: notes || null,
       photo_path: photoPath,
-      created_by: userId,
-    }).select().single();
+    };
+    if (partyId) insertData.party_id = partyId;
+    if (userId) insertData.created_by = userId;
+    if (designCount) insertData.design_count = parseInt(designCount);
 
-    if (err) { setError(err.message); setSaving(false); return; }
+    const { data, error: insertError } = await supabase
+      .from("inspirations")
+      .insert(insertData)
+      .select("id")
+      .single();
 
-    await supabase.from("activity_logs").insert({
-      entity_type: "inspiration", entity_id: data.id,
-      action: "created", description: `Inspiration "${conceptName}" created`,
-      created_by: userId,
-    });
+    if (insertError) {
+      setError(insertError.message);
+      setSaving(false);
+      return;
+    }
 
     router.push(`/inspirations/${data.id}`);
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-16">
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-stone-500 mb-5 -ml-1">
+    <div className="max-w-xl mx-auto px-4 py-6 pb-16">
+      <button onClick={() => router.back()}
+        className="flex items-center gap-1 text-sm text-stone-500 mb-5 -ml-1">
         <ChevronLeft className="w-4 h-4" /> Back
       </button>
 
@@ -103,30 +113,35 @@ export default function NewInspirationPage() {
 
         {/* Photo upload */}
         <div className="bg-white border border-stone-200 rounded-2xl p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Inspiration Photo</h2>
-          {photoPreview ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photoPreview} alt="preview"
-                className="w-full max-h-64 object-contain rounded-xl border border-stone-200" />
-              <button type="button" onClick={() => { setPhoto(null); setPhotoPreview(null); }}
-                className="absolute top-2 right-2 bg-white rounded-full p-1 shadow border border-stone-200">
-                <X className="w-4 h-4 text-stone-500" />
-              </button>
-            </div>
-          ) : (
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="w-full border-2 border-dashed border-stone-200 rounded-xl py-10 flex flex-col items-center gap-2 text-stone-400 hover:border-amber-400 hover:text-amber-600 transition-colors">
-              <ImageIcon className="w-8 h-8" />
-              <span className="text-sm font-medium">Tap to upload inspiration photo</span>
-              <span className="text-xs">JPG, PNG, WEBP</span>
-            </button>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
-          {!photoPreview && (
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
+            Inspiration Photo
+          </label>
+          <div
+            onClick={() => fileRef.current?.click()}
+            className="border-2 border-dashed border-stone-200 rounded-xl aspect-video flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 transition-colors overflow-hidden relative"
+          >
+            {photoPreview ? (
+              <>
+                <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+                <button type="button"
+                  onClick={(e) => { e.stopPropagation(); setPhoto(null); setPhotoPreview(null); }}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
+                  <X className="w-4 h-4 text-stone-600" />
+                </button>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="w-8 h-8 text-stone-300 mb-2" />
+                <p className="text-sm text-stone-400">Tap to upload inspiration photo</p>
+                <p className="text-xs text-stone-300 mt-1">JPG, PNG, WEBP</p>
+              </>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+          {photo && (
             <button type="button" onClick={() => fileRef.current?.click()}
               className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 font-medium">
-              <Upload className="w-3.5 h-3.5" /> Choose photo
+              <Upload className="w-3.5 h-3.5" /> Change photo
             </button>
           )}
         </div>
@@ -137,21 +152,30 @@ export default function NewInspirationPage() {
 
           <Field label="Concept Name *">
             <input value={conceptName} onChange={(e) => setConceptName(e.target.value)}
-              placeholder="e.g. Floral Allover Summer 2026" className={INPUT} required />
+              placeholder="e.g. Floral Allover, Geometric Border"
+              className={INPUT} required />
           </Field>
 
-          <SearchableSelect label="Party" table="parties"
-            value={partyId} onChange={setPartyId}
-            options={parties} setOptions={setParties} />
+          <Field label="Party">
+            <select value={partyId || ""} onChange={(e) => setPartyId(e.target.value || null)}
+              className={INPUT}>
+              <option value="">Select party...</option>
+              {parties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Season / Collection">
               <input value={season} onChange={(e) => setSeason(e.target.value)}
-                placeholder="e.g. Summer 2026" className={INPUT} />
+                placeholder="e.g. Diwali 2025" className={INPUT} />
             </Field>
-            <Field label="No. of Designs in Catalogue" hint="How many designs planned from this concept">
-              <input type="number" value={designCount} onChange={(e) => setDesignCount(e.target.value)}
-                placeholder="e.g. 6" className={INPUT} />
+            <Field label="No. of Designs in Catalogue"
+              hint="How many designs planned from this concept">
+              <input type="number" value={designCount}
+                onChange={(e) => setDesignCount(e.target.value)}
+                placeholder="e.g. 5" className={INPUT} />
             </Field>
           </div>
 
@@ -162,7 +186,11 @@ export default function NewInspirationPage() {
           </Field>
         </div>
 
-        {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+        {error && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
 
         <button type="submit" disabled={saving}
           className="w-full bg-amber-700 text-white rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
