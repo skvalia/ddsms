@@ -5,10 +5,6 @@ import { notFound } from "next/navigation";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-function bucketUrl(bucket: string, path: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
-}
-
 export default async function InspirationDetailPage({ 
   params 
 }: { 
@@ -37,15 +33,15 @@ export default async function InspirationDetailPage({
     .order("created_at", { ascending: false });
 
   const photoUrl = insp.photo_path
-    ? bucketUrl("inspiration-files", insp.photo_path)
+    ? `${SUPABASE_URL}/storage/v1/object/public/inspiration-files/${insp.photo_path}`
     : null;
 
   return (
     <AppShell userName={userName}>
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Link href="/inspirations" className="text-sm text-stone-500">← Inspirations</Link>
-        </div>
+        <Link href="/inspirations" className="text-sm text-stone-500 mb-5 inline-block">
+          ← Inspirations
+        </Link>
 
         {photoUrl && (
           <div className="rounded-2xl overflow-hidden mb-5 border border-stone-200">
@@ -53,7 +49,7 @@ export default async function InspirationDetailPage({
           </div>
         )}
 
-        <div className="mb-5">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">{insp.concept_name}</h1>
           <div className="flex flex-wrap gap-3 mt-2 text-sm text-stone-500">
             {insp.party?.name && <span>👥 {insp.party.name}</span>}
@@ -65,6 +61,7 @@ export default async function InspirationDetailPage({
           )}
         </div>
 
+        {/* Sketches */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-stone-400">
@@ -80,10 +77,11 @@ export default async function InspirationDetailPage({
             <div className="grid grid-cols-2 gap-3">
               {sketches.map((s: any) => {
                 const sketchPhoto = s.photo_path
-                  ? bucketUrl("sketch-files", s.photo_path)
+                  ? `${SUPABASE_URL}/storage/v1/object/public/sketch-files/${s.photo_path}`
                   : null;
                 return (
-                  <div key={s.id} className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
+                  <Link key={s.id} href={`/sketches/${s.id}`}
+                    className="bg-white border border-stone-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
                     <div className="aspect-square bg-stone-100 flex items-center justify-center overflow-hidden">
                       {sketchPhoto
                         ? <img src={sketchPhoto} alt={s.sketch_number} className="w-full h-full object-cover" />
@@ -96,17 +94,15 @@ export default async function InspirationDetailPage({
                         s.status === "Ready for DSSR" ? "bg-green-100 text-green-700" : "bg-stone-100 text-stone-600"
                       }`}>{s.status}</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
           ) : (
             <div className="text-center py-8 border-2 border-dashed border-stone-200 rounded-2xl">
-              <p className="text-sm text-stone-400 mb-2">No sketches yet for this concept</p>
+              <p className="text-sm text-stone-400 mb-2">No sketches yet</p>
               <Link href={`/sketches/new?inspiration=${id}`}
-                className="text-sm font-semibold text-amber-700">
-                Add first sketch →
-              </Link>
+                className="text-sm font-semibold text-amber-700">Add first sketch →</Link>
             </div>
           )}
         </div>
