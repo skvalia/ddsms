@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Plus, Pencil, Trash2, Check, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type Table = "parties" | "yarns" | "fabrics" | "design_types" | "sketch_artists" | "designers";
+type Table = "parties" | "yarns" | "fabrics" | "design_types" | "machine_types" | "sketch_artists" | "designers";
 type Row = { id: string; name: string };
 
 const TABS: { key: Table; label: string; desc: string }[] = [
@@ -13,6 +13,7 @@ const TABS: { key: Table; label: string; desc: string }[] = [
   { key: "yarns", label: "Yarns", desc: "Front and back yarn types" },
   { key: "fabrics", label: "Fabrics", desc: "Fabric types" },
   { key: "design_types", label: "Design Types", desc: "Allover, Border, Placement etc." },
+  { key: "machine_types", label: "Machines", desc: "Schiffli, Multi, Aari etc." },
   { key: "sketch_artists", label: "Sketch Artists", desc: "Who sketches designs" },
   { key: "designers", label: "Designers", desc: "CAD/digitising team" },
 ];
@@ -71,14 +72,11 @@ export default function MasterDataPage() {
       <h1 className="text-2xl font-bold tracking-tight mb-1">Manage Data</h1>
       <p className="text-sm text-stone-500 mb-5">Add, rename, or remove master data used across the system.</p>
 
-      {/* Tabs — scrollable on mobile */}
       <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => { setTab(t.key); setError(null); }}
             className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
-              tab === t.key
-                ? "bg-amber-700 text-white border-amber-700"
-                : "bg-white text-stone-500 border-stone-200"
+              tab === t.key ? "bg-amber-700 text-white border-amber-700" : "bg-white text-stone-500 border-stone-200"
             }`}>
             {t.label}
           </button>
@@ -87,11 +85,10 @@ export default function MasterDataPage() {
 
       <p className="text-xs text-stone-400 mb-3">{currentTab.desc}</p>
 
-      {/* Add new */}
       <div className="flex gap-2 mb-4">
         <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder={`Add new ${currentTab.label.toLowerCase().slice(0, -1)}...`}
+          placeholder={`Add new ${currentTab.label.toLowerCase()}...`}
           className="flex-1 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600" />
         <button onClick={add} disabled={adding || !newName.trim()}
           className="rounded-xl bg-amber-700 text-white px-4 flex items-center gap-1.5 text-sm font-semibold disabled:opacity-50">
@@ -124,9 +121,7 @@ export default function MasterDataPage() {
               )}
             </div>
           ))}
-          {rows.length === 0 && (
-            <p className="px-4 py-8 text-sm text-stone-400 text-center">No {currentTab.label.toLowerCase()} yet — add one above.</p>
-          )}
+          {rows.length === 0 && <p className="px-4 py-8 text-sm text-stone-400 text-center">No {currentTab.label.toLowerCase()} yet — add one above.</p>}
         </div>
       )}
     </div>
