@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { ChevronLeft, Loader2 } from "lucide-react";
@@ -18,8 +18,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-export default function EditDssrPage({ params }: { params: { id: string } }) {
+export default function EditDssrPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -50,13 +51,9 @@ export default function EditDssrPage({ params }: { params: { id: string } }) {
         supabase.from("machine_types").select("id, name").order("name"),
       ]);
       setParties(p ?? []);
+      setDesignTypes(dt ?? []);
+      setDesigners(des ?? []);
       setMachineTypes(mt ?? []);
-
-      // For design_types and designers, find by name match
-      const dtList = dt ?? [];
-      const desList = des ?? [];
-      setDesignTypes(dtList);
-      setDesigners(desList);
 
       if (dssr) {
         setYourRefNo(dssr.your_ref_no || "");
@@ -65,11 +62,10 @@ export default function EditDssrPage({ params }: { params: { id: string } }) {
         setRemarks(dssr.remarks || "");
         setPartyId(dssr.party_id || null);
         setDesignerId(dssr.designer_id || null);
-        // Match by name for design_type and machine_type
-        const dt_match = dtList.find((d: any) => d.name === dssr.design_type);
-        if (dt_match) setDesignTypeId(dt_match.id);
-        const mt_match = mt?.find((m: any) => m.name === dssr.machine_type);
-        if (mt_match) setMachineTypeId(mt_match.id);
+        const dtMatch = (dt ?? []).find((d: any) => d.name === dssr.design_type);
+        if (dtMatch) setDesignTypeId(dtMatch.id);
+        const mtMatch = (mt ?? []).find((m: any) => m.name === dssr.machine_type);
+        if (mtMatch) setMachineTypeId(mtMatch.id);
       }
       setLoading(false);
     })();
@@ -78,17 +74,16 @@ export default function EditDssrPage({ params }: { params: { id: string } }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSaving(true);
+    setError(null); setSaving(true);
 
     const updateData: Record<string, unknown> = {
       your_ref_no: yourRefNo || null,
       design_number: designNumber || null,
       description: description || null,
       remarks: remarks || null,
+      party_id: partyId || null,
+      designer_id: designerId || null,
     };
-    if (partyId) updateData.party_id = partyId;
-    if (designerId) updateData.designer_id = designerId;
     if (designTypeId) {
       const dt = designTypes.find(d => d.id === designTypeId);
       if (dt) updateData.design_type = dt.name;
