@@ -9,13 +9,24 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://ddsms.vercel.app/reset-password",
+    });
+    if (error) setError(error.message);
+    else setError("✅ Password reset email sent! Check your inbox.");
+    setLoading(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,7 +104,14 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={mode === "forgot" ? handleForgot : handleSubmit} className="space-y-4">
+            {mode === "forgot" && (
+              <div className="mb-2">
+                <p className="text-xs text-stone-500 text-center">
+                  Enter your email and we&apos;ll send a reset link
+                </p>
+              </div>
+            )}
             {mode === "signup" && (
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium mb-1.5">
@@ -155,6 +173,15 @@ export default function LoginPage() {
               </p>
             )}
 
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="text-xs text-(--color-thread) text-right w-full -mt-1 mb-1"
+              >
+                Forgot password?
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
