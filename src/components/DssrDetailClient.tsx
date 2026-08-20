@@ -25,7 +25,8 @@ import {
   type ActivityLog,
   type DssrStatus,
 } from "@/types/database";
-import { ChevronLeft, Send, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, Send, Loader2, Plus, Pencil } from "lucide-react";
+import { SketchesPanel } from "./SketchesPanel";
 import { format } from "date-fns";
 
 export function DssrDetailClient({
@@ -36,6 +37,8 @@ export function DssrDetailClient({
   comments,
   activity,
   userId,
+  sketches,
+  supabaseUrl,
 }: {
   dssr: Dssr;
   versions: DssrVersion[];
@@ -44,6 +47,8 @@ export function DssrDetailClient({
   comments: Comment[];
   activity: ActivityLog[];
   userId: string;
+  sketches: any[];
+  supabaseUrl: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -149,6 +154,10 @@ export function DssrDetailClient({
           <h1 className="font-(family-name:--font-display) text-2xl font-semibold tracking-tight">
             {dssr.design_number || dssr.dssr_number}
           </h1>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {(dssr as any).your_ref_no && <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">Ref: {(dssr as any).your_ref_no}</span>}
+            {(dssr as any).machine_type && <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">🔧 {(dssr as any).machine_type}</span>}
+          </div>
           <p className="text-sm text-(--color-ink-soft) font-(family-name:--font-mono) mt-0.5">
             {dssr.dssr_number} · Version {dssr.current_version}
           </p>
