@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Film, Download, X, Upload, Loader2 } from "lucide-react";
+import { FileText, Film, Upload, Loader2, Trash2, Pencil, Check, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type FileItem = {
@@ -12,183 +12,161 @@ type FileItem = {
   stage?: string | null;
 };
 
-const IMAGE_EXT = ["jpg", "jpeg", "png", "webp", "gif"];
-const VIDEO_EXT = ["mp4", "mov"];
-
-function getExt(path: string) {
-  return path.split(".").pop()?.toLowerCase() || "";
-}
-
-export function FileGallery({
-  files,
-  getPublicUrl,
-  onUpload,
-  uploading,
-  groupByStage = false,
-}: {
+type Props = {
   files: FileItem[];
   bucket: string;
   getPublicUrl: (path: string) => string;
-  onUpload?: (file: File) => void;
+  onUpload?: (file: File) => Promise<void>;
   uploading?: boolean;
   groupByStage?: boolean;
-}) {
+  table?: string; // "dssr_files" or "ssr_files"
+};
+
+const IMAGE_EXT = ["jpg", "jpeg", "png", "webp", "gif"];
+const VIDEO_EXT = ["mp4", "mov", "avi"];
+
+export function bucketPublicUrl(bucket: string, path: string) {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+export function FileGallery({ files, bucket, getPublicUrl, onUpload, uploading, groupByStage, table }: Props) {
+  const supabase = createClient();
+  const [localFiles, setLocalFiles] = useState(files);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
 
-  if (groupByStage) {
-    const groups = new Map<string, FileItem[]>();
-    for (const f of files) {
-      const key = f.stage || "General";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(f);
-    }
+  async function deleteFile(file: FileItem) {
+    if (!confirm("Delete this file? This cannot be undone.")) return;
+    // Delete from storage
+    await supabase.storage.from(bucket).remove([file.file_path]);
+    // Delete from DB
+    const tbl = table || (bucket === "dssr-files" ? "dssr_files" : "ssr_files");
+    await supabase.from(tbl).delete().eq("id", file.id);
+    setLocalFiles(prev => prev.filter(f => f.id !== file.id));
+  }
+
+  async function saveLabel(id: string) {
+    const tbl = table || (bucket === "dssr-files" ? "dssr_files" : "ssr_files");
+    await supabase.from(tbl).update({ label: editLabel || null }).eq("id", id);
+    setLocalFiles(prev => prev.map(f => f.id === id ? { ...f, label: editLabel || null } : f));
+    setEditingId(null);
+  }
+
+  function renderFile(f: FileItem) {
+    const ext = f.file_path.split(".").pop()?.toLowerCase() || "";
+    const url = getPublicUrl(f.file_path);
+    const isImage = IMAGE_EXT.includes(ext);
+    const isVideo = VIDEO_EXT.includes(ext);
 
     return (
-      <div className="space-y-4">
-        {Array.from(groups.entries()).map(([stage, stageFiles]) => (
-          <div key={stage}>
-            <p className="text-xs font-semibold text-(--color-thread) mb-1.5">{stage}</p>
-            <GalleryGrid
-              files={stageFiles}
-              getPublicUrl={getPublicUrl}
-              setLightbox={setLightbox}
-            />
-          </div>
-        ))}
-        {onUpload && (
-          <UploadTile onUpload={onUpload} uploading={uploading} />
-        )}
-        {files.length === 0 && !onUpload && (
-          <p className="text-sm text-(--color-ink-soft) py-2">No files uploaded yet.</p>
-        )}
-        <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
+      <div key={f.id} className="relative group">
+        {/* File thumbnail */}
+        <div className="aspect-square rounded-xl overflow-hidden bg-(--color-paper) border border-(--color-line) relative">
+          {isImage ? (
+            <button onClick={() => setLightbox(url)} className="w-full h-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={f.label || ""} className="w-full h-full object-cover" />
+            </button>
+          ) : (
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="w-full h-full flex flex-col items-center justify-center gap-1 text-(--color-ink-soft)">
+              {isVideo ? <Film className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+              <span className="text-[10px] uppercase">{ext}</span>
+            </a>
+          )}
+
+          {/* Delete button - top right */}
+          <button
+            onClick={() => deleteFile(f)}
+            className="absolute top-1 right-1 bg-white rounded-full p-1 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+            title="Delete file"
+          >
+            <Trash2 className="w-3 h-3 text-red-500" />
+          </button>
+        </div>
+
+        {/* Label / stage */}
+        <div className="mt-1">
+          {editingId === f.id ? (
+            <div className="flex items-center gap-1">
+              <input autoFocus value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveLabel(f.id)}
+                className="flex-1 text-xs rounded border border-(--color-line) px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-(--color-thread)"
+              />
+              <button onClick={() => saveLabel(f.id)} className="text-(--color-thread)"><Check className="w-3 h-3" /></button>
+              <button onClick={() => setEditingId(null)} className="text-(--color-ink-soft)"><X className="w-3 h-3" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <p className="text-[10px] text-(--color-ink-soft) truncate flex-1">
+                {f.label || f.stage || ext.toUpperCase()}
+              </p>
+              <button
+                onClick={() => { setEditingId(f.id); setEditLabel(f.label || ""); }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Edit label"
+              >
+                <Pencil className="w-2.5 h-2.5 text-(--color-ink-soft)" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
+  // Group by stage if requested
+  const grouped = groupByStage
+    ? localFiles.reduce((acc, f) => {
+        const key = f.stage || "General";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(f);
+        return acc;
+      }, {} as Record<string, FileItem[]>)
+    : { All: localFiles };
+
   return (
     <div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        <GalleryGrid files={files} getPublicUrl={getPublicUrl} setLightbox={setLightbox} />
-        {onUpload && <UploadTile onUpload={onUpload} uploading={uploading} inline />}
-      </div>
+      {Object.entries(grouped).map(([stage, stageFiles]) => (
+        <div key={stage} className="mb-4">
+          {groupByStage && (
+            <p className="text-xs font-semibold text-(--color-thread) mb-2">{stage}</p>
+          )}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {stageFiles.map(renderFile)}
+          </div>
+        </div>
+      ))}
 
-      {files.length === 0 && !onUpload && (
-        <p className="text-sm text-(--color-ink-soft) py-4">No files uploaded yet.</p>
+      {/* Upload button */}
+      {onUpload && (
+        <label className="mt-2 flex flex-col items-center justify-center gap-1 aspect-square w-20 rounded-xl border-2 border-dashed border-(--color-line) cursor-pointer hover:border-(--color-thread) transition-colors">
+          {uploading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-(--color-ink-soft)" />
+          ) : (
+            <>
+              <Upload className="w-5 h-5 text-(--color-ink-soft)" />
+              <span className="text-[10px] text-(--color-ink-soft)">Add file</span>
+            </>
+          )}
+          <input type="file" className="hidden" disabled={uploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f && onUpload) onUpload(f); }} />
+        </label>
       )}
 
-      <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
-    </div>
-  );
-}
-
-function GalleryGrid({
-  files,
-  getPublicUrl,
-  setLightbox,
-}: {
-  files: FileItem[];
-  getPublicUrl: (path: string) => string;
-  setLightbox: (url: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 contents">
-      {files.map((f) => {
-        const ext = getExt(f.file_path);
-        const url = getPublicUrl(f.file_path);
-        if (IMAGE_EXT.includes(ext)) {
-          return (
-            <button
-              key={f.id}
-              onClick={() => setLightbox(url)}
-              className="aspect-square rounded-xl overflow-hidden bg-(--color-paper) border border-(--color-line)"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={f.label || ""} className="w-full h-full object-cover" />
-            </button>
-          );
-        }
-        const Icon = VIDEO_EXT.includes(ext) ? Film : FileText;
-        return (
-          <a
-            key={f.id}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="aspect-square rounded-xl bg-(--color-paper) border border-(--color-line) flex flex-col items-center justify-center gap-1 text-(--color-ink-soft)"
-          >
-            <Icon className="w-6 h-6" />
-            <span className="text-[10px] uppercase font-semibold">{ext}</span>
-          </a>
-        );
-      })}
-    </div>
-  );
-}
-
-function UploadTile({
-  onUpload,
-  uploading,
-  inline,
-}: {
-  onUpload: (file: File) => void;
-  uploading?: boolean;
-  inline?: boolean;
-}) {
-  return (
-    <label
-      className={`aspect-square rounded-xl border border-dashed border-(--color-line) flex flex-col items-center justify-center gap-1 text-(--color-ink-soft) cursor-pointer hover:border-(--color-thread) hover:text-(--color-thread) transition-colors ${
-        inline ? "" : "max-w-[120px]"
-      }`}
-    >
-      {uploading ? (
-        <Loader2 className="w-5 h-5 animate-spin" />
-      ) : (
-        <>
-          <Upload className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Add file</span>
-        </>
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <button className="absolute top-4 right-4 text-white" onClick={() => setLightbox(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-xl object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
-      <input
-        type="file"
-        className="hidden"
-        disabled={uploading}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onUpload(file);
-          e.target.value = "";
-        }}
-      />
-    </label>
-  );
-}
-
-function Lightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
-  if (!url) return null;
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <button className="absolute top-4 right-4 text-white p-2" onClick={onClose} aria-label="Close">
-        <X className="w-6 h-6" />
-      </button>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" className="max-w-full max-h-full object-contain rounded-lg" />
-      <a
-        href={url}
-        download
-        className="absolute bottom-4 right-4 text-white bg-white/10 backdrop-blur p-2.5 rounded-full"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Download className="w-5 h-5" />
-      </a>
     </div>
   );
-}
-
-export function bucketPublicUrl(bucket: string, path: string) {
-  const supabase = createClient();
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
 }
