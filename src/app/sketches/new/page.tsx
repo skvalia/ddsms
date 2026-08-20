@@ -29,6 +29,7 @@ function NewSketchForm() {
   const [inspirations, setInspirations] = useState<{id:string;concept_name:string}[]>([]);
   const [sketchArtists, setSketchArtists] = useState<SelectOption[]>([]);
   const [inspirationId, setInspirationId] = useState<string | null>(null);
+  const [dssrId, setDssrId] = useState<string | null>(null);
   const [sketchArtistId, setSketchArtistId] = useState<string | null>(null);
   const [sketchNumber, setSketchNumber] = useState("");
   const [description, setDescription] = useState("");
@@ -63,6 +64,8 @@ function NewSketchForm() {
 
       const inspParam = params.get("inspiration");
       if (inspParam) setInspirationId(inspParam);
+      const dssrParam = params.get("dssr");
+      if (dssrParam) setDssrId(dssrParam);
 
       // Auto-generate sketch number
       if (last && last.length > 0 && last[0].sketch_number) {
@@ -104,13 +107,15 @@ function NewSketchForm() {
       photo_path: photoPath,
     };
     if (inspirationId) insertData.inspiration_id = inspirationId;
+    if (dssrId) insertData.dssr_id = dssrId;
     if (sketchArtistId) insertData.sketch_artist_id = sketchArtistId;
     if (userId) insertData.created_by = userId;
 
     const { error: insertError } = await supabase.from("sketches").insert(insertData).select("id").single();
     if (insertError) { setError(insertError.message); setSaving(false); return; }
 
-    if (inspirationId) router.push(`/inspirations/${inspirationId}`);
+    if (dssrId) router.push(`/dssr/${dssrId}`);
+    else if (inspirationId) router.push(`/inspirations/${inspirationId}`);
     else router.push("/sketches");
   }
 
