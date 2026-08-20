@@ -48,7 +48,7 @@ export function SketchesPanel({ dssrId, initialSketches }: { dssrId: string; ini
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400">
-          Sketches in this folder ({sketches.length})
+          Input Sketches — Design References ({sketches.length})
         </h2>
         <Link href={`/sketches/new?dssr=${dssrId}`}
           className="text-xs font-semibold text-amber-700 flex items-center gap-1">
@@ -58,10 +58,10 @@ export function SketchesPanel({ dssrId, initialSketches }: { dssrId: string; ini
 
       {sketches.length === 0 ? (
         <div className="text-center py-6 border-2 border-dashed border-stone-200 rounded-2xl">
-          <p className="text-sm text-stone-400 mb-2">No sketches in this folder yet</p>
+          <p className="text-sm text-stone-400 mb-2">No input sketches yet — add the sketch photos that will be given to the designer</p>
           <Link href={`/sketches/new?dssr=${dssrId}`}
             className="inline-block bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
-            + Add first sketch
+            + Add Input Sketch
           </Link>
         </div>
       ) : (
