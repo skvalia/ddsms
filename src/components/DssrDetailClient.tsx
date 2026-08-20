@@ -281,6 +281,11 @@ export function DssrDetailClient({
         />
       </div>
 
+      {/* Sketches Panel */}
+      <div className="bg-(--color-surface) border border-(--color-line) rounded-2xl p-4 mb-5">
+        <SketchesPanel dssrId={dssr.id} initialSketches={sketches} />
+      </div>
+
       {/* All SSRs */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-3">
