@@ -27,6 +27,7 @@ function NewSketchForm() {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
   const [inspirations, setInspirations] = useState<{id:string;concept_name:string}[]>([]);
+  const [dssrs, setDssrs] = useState<{id:string;dssr_number:string;design_type:string|null}[]>([]);
   const [sketchArtists, setSketchArtists] = useState<SelectOption[]>([]);
   const [inspirationId, setInspirationId] = useState<string | null>(null);
   const [dssrId, setDssrId] = useState<string | null>(null);
@@ -43,14 +44,16 @@ function NewSketchForm() {
       const { data: auth } = await supabase.auth.getUser();
       setUserId(auth.user?.id ?? "");
 
-      const [{ data: insp }, { data: artists }, { data: pendingCounts }, { data: last }] = await Promise.all([
+      const [{ data: insp }, { data: dssrList }, { data: artists }, { data: pendingCounts }, { data: last }] = await Promise.all([
         supabase.from("inspirations").select("id, concept_name").order("created_at", { ascending: false }),
+        supabase.from("dssr").select("id, dssr_number, design_type").order("created_at", { ascending: false }),
         supabase.from("sketch_artists").select("id, name").order("name"),
         supabase.from("sketches").select("sketch_artist_id").not("sketch_artist_id", "is", null).in("status", ["Draft", "In Progress"]),
         supabase.from("sketches").select("sketch_number").order("created_at", { ascending: false }).limit(1),
       ]);
 
       setInspirations(insp ?? []);
+      setDssrs((dssrList as any) ?? []);
 
       // Count pending sketches per artist
       const pendingMap: Record<string, number> = {};
@@ -153,6 +156,15 @@ function NewSketchForm() {
         {/* Details */}
         <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400">Sketch Details</h2>
+
+          <Field label="Linked DSSR — optional">
+            <select value={dssrId || ""} onChange={(e) => setDssrId(e.target.value || null)} className={INPUT}>
+              <option value="">No DSSR linked</option>
+              {dssrs.map((d) => (
+                <option key={d.id} value={d.id}>{d.dssr_number}{d.design_type ? ` — ${d.design_type}` : ""}</option>
+              ))}
+            </select>
+          </Field>
 
           <Field label="Linked Inspiration — optional">
             <select value={inspirationId || ""} onChange={(e) => setInspirationId(e.target.value || null)} className={INPUT}>
