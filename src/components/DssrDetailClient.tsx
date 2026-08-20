@@ -162,7 +162,7 @@ export function DssrDetailClient({
             {dssr.dssr_number} · Version {dssr.current_version}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1 mt-1">
+        <div className="flex flex-col items-end gap-1.5 mt-1">
           <StatusPill
             label={currentStatus}
             color={dssrStatusColor[currentStatus]}
@@ -173,6 +173,10 @@ export function DssrDetailClient({
             color={priorityColor[dssr.priority]}
             bg={priorityBg[dssr.priority]}
           />
+          <Link href={`/dssr/${dssr.id}/edit`}
+            className="flex items-center gap-1 text-xs text-amber-700 font-medium border border-amber-200 px-2 py-1 rounded-lg">
+            <Pencil className="w-3 h-3" /> Edit
+          </Link>
         </div>
       </div>
 
