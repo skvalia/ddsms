@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SearchableSelect, SelectOption } from "@/components/SearchableSelect";
 import { ChevronLeft, Loader2, ImageIcon } from "lucide-react";
@@ -18,8 +18,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default function EditSketchPage({ params }: { params: { id: string } }) {
+export default function EditSketchPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -57,9 +58,7 @@ export default function EditSketchPage({ params }: { params: { id: string } }) {
         setDescription(sketch.description || "");
         setNotes(sketch.notes || "");
         setStatus(sketch.status || "Draft");
-        if (sketch.photo_path) {
-          setExistingPhoto(`${SUPABASE_URL}/storage/v1/object/public/sketch-files/${sketch.photo_path}`);
-        }
+        if (sketch.photo_path) setExistingPhoto(`${SUPABASE_URL}/storage/v1/object/public/sketch-files/${sketch.photo_path}`);
       }
       setLoading(false);
     })();
@@ -68,8 +67,7 @@ export default function EditSketchPage({ params }: { params: { id: string } }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSaving(true);
+    setError(null); setSaving(true);
 
     let photoPath: string | undefined = undefined;
     if (photo) {
@@ -85,9 +83,9 @@ export default function EditSketchPage({ params }: { params: { id: string } }) {
       description: description || null,
       notes: notes || null,
       status,
+      inspiration_id: inspirationId || null,
+      sketch_artist_id: sketchArtistId || null,
     };
-    if (inspirationId) updateData.inspiration_id = inspirationId;
-    if (sketchArtistId) updateData.sketch_artist_id = sketchArtistId;
     if (photoPath) updateData.photo_path = photoPath;
 
     const { error: err } = await supabase.from("sketches").update(updateData).eq("id", params.id);
