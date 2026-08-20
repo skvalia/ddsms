@@ -1,25 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronLeft, Loader2, ImageIcon, X } from "lucide-react";
+import { ChevronLeft, Loader2, ImageIcon } from "lucide-react";
 
 const INPUT = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1.5">{label}</label>
       {children}
-      {hint && <p className="text-xs text-stone-400 mt-1">{hint}</p>}
     </div>
   );
 }
 
-export default function EditInspirationPage({ params }: { params: { id: string } }) {
+export default function EditInspirationPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -52,27 +52,17 @@ export default function EditInspirationPage({ params }: { params: { id: string }
         setSeason(insp.season || "");
         setDesignCount(insp.design_count?.toString() || "");
         setNotes(insp.notes || "");
-        if (insp.photo_path) {
-          setExistingPhoto(`${SUPABASE_URL}/storage/v1/object/public/inspiration-files/${insp.photo_path}`);
-        }
+        if (insp.photo_path) setExistingPhoto(`${SUPABASE_URL}/storage/v1/object/public/inspiration-files/${insp.photo_path}`);
       }
       setLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhoto(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!conceptName.trim()) { setError("Concept name is required"); return; }
-    setError(null);
-    setSaving(true);
+    setError(null); setSaving(true);
 
     let photoPath: string | undefined = undefined;
     if (photo) {
@@ -88,8 +78,8 @@ export default function EditInspirationPage({ params }: { params: { id: string }
       season: season || null,
       notes: notes || null,
       design_count: designCount ? parseInt(designCount) : null,
+      party_id: partyId || null,
     };
-    if (partyId) updateData.party_id = partyId;
     if (photoPath) updateData.photo_path = photoPath;
 
     const { error: err } = await supabase.from("inspirations").update(updateData).eq("id", params.id);
@@ -110,16 +100,13 @@ export default function EditInspirationPage({ params }: { params: { id: string }
         <div className="bg-white border border-stone-200 rounded-2xl p-4">
           <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Photo</label>
           <div onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-stone-200 rounded-xl aspect-video flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 overflow-hidden relative">
-            {photoPreview ? (
-              <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
-            ) : existingPhoto ? (
-              <img src={existingPhoto} alt="existing" className="w-full h-full object-cover" />
-            ) : (
-              <><ImageIcon className="w-8 h-8 text-stone-300 mb-2" /><p className="text-sm text-stone-400">Tap to change photo</p></>
-            )}
+            className="border-2 border-dashed border-stone-200 rounded-xl aspect-video flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 overflow-hidden">
+            {photoPreview ? <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+              : existingPhoto ? <img src={existingPhoto} alt="existing" className="w-full h-full object-cover" />
+              : <><ImageIcon className="w-8 h-8 text-stone-300 mb-2" /><p className="text-sm text-stone-400">Tap to change photo</p></>}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPhoto(f); setPhotoPreview(URL.createObjectURL(f)); } }} />
         </div>
 
         <div className="bg-white border border-stone-200 rounded-2xl p-4 space-y-4">
