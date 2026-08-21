@@ -36,7 +36,7 @@ export function SsrDetailClient({
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"details" | "costing">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "journey" | "costing">("details");
   const [remarks, setRemarks] = useState("");
   const [uploadStage, setUploadStage] = useState<SsrFileStage>(defaultStageForStatus(ssr.status));
 
@@ -156,6 +156,13 @@ export function SsrDetailClient({
       {activeTab === "journey" && (
         <div className="space-y-4">
           {/* Sample Number Assignment - Point 6 */}
+          <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
+        </div>
+      )}
+
+      {/* Journey tab */}
+      {activeTab === "journey" && (
+        <div className="space-y-4">
           <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
         </div>
       )}
