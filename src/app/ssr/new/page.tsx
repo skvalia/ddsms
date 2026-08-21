@@ -127,6 +127,7 @@ function NewSsrForm() {
   const [operator, setOperator] = useState("");
   const [remarks, setRemarks] = useState("");
   const [dyeingRequired, setDyeingRequired] = useState(false);
+  const [machineType, setMachineType] = useState<string | null>(null);
   const [dyeingName, setDyeingName] = useState("");
 
   useEffect(() => {
@@ -160,7 +161,11 @@ function NewSsrForm() {
       const dssrParam = params.get("dssr");
       if (dssrParam && d) {
         const match = (d as any[]).find((row) => row.id === dssrParam);
-        if (match) { setDssrId(match.id); setDesignNumber(match.design_number || ""); }
+        if (match) {
+          setDssrId(match.id);
+          setDesignNumber(match.design_number || "");
+          if (match.machine_type) setMachineType(match.machine_type);
+        }
       }
 
       setLoading(false);
@@ -191,6 +196,7 @@ function NewSsrForm() {
       machine: machine || null,
       operator: operator || null,
       remarks: remarks || null,
+      machine_type: machineType || null,
       dyeing_required: dyeingRequired,
       dyeing_name: dyeingName || null,
       status: "YTR",
