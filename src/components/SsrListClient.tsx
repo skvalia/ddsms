@@ -6,7 +6,53 @@ import { SsrCard } from "./SsrCard";
 import { StatusPill } from "./StatusPill";
 import { ssrStatusColor, ssrStatusBg } from "@/lib/status-colors";
 import { SSR_STATUSES, type Ssr, type SsrStatus } from "@/types/database";
-import { LayoutGrid, List as ListIcon } from "lucide-react";
+import { LayoutGrid, List as ListIcon, ChevronDown, ChevronUp } from "lucide-react";
+
+
+function CollapsibleStatusGroups({ ssrs }: { ssrs: Ssr[] }) {
+  const grouped = ssrs.reduce((acc, ssr) => {
+    const s = ssr.status;
+    if (!acc[s]) acc[s] = [];
+    acc[s].push(ssr);
+    return acc;
+  }, {} as Record<string, Ssr[]>);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+    Object.fromEntries(Object.keys(grouped).map(s => [s, true]))
+  );
+
+  function toggle(status: string) {
+    setOpenGroups(prev => ({ ...prev, [status]: !prev[status] }));
+  }
+
+  return (
+    <div className="space-y-3">
+      {SSR_STATUSES.filter(s => grouped[s]?.length > 0).map(status => (
+        <div key={status} className="bg-(--color-surface) border border-(--color-line) rounded-2xl overflow-hidden">
+          <button onClick={() => toggle(status)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-(--color-paper) transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">{status}</span>
+              <span className="text-xs bg-(--color-paper) text-(--color-ink-soft) px-2 py-0.5 rounded-full">
+                {grouped[status].length}
+              </span>
+            </div>
+            {openGroups[status]
+              ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" />
+              : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
+          </button>
+          {openGroups[status] && (
+            <div className="flex flex-col gap-2 px-4 pb-3 border-t border-(--color-line)">
+              {grouped[status].map(ssr => (
+                <SsrCard key={ssr.id} ssr={ssr} />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function SsrListClient({
   initialData,
@@ -120,11 +166,7 @@ export function SsrListClient({
       )}
 
       {view === "list" && filtered.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((ssr) => (
-            <SsrCard key={ssr.id} ssr={ssr} />
-          ))}
-        </div>
+        <CollapsibleStatusGroups ssrs={filtered} />
       )}
 
       {view === "kanban" && (
