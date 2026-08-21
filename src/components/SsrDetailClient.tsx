@@ -9,6 +9,7 @@ import { StatusTimeline } from "./StatusTimeline";
 import { FileGallery, bucketPublicUrl } from "./FileGallery";
 import { TrackingPanel } from "./TrackingPanel";
 import { CostingPanel } from "./CostingPanel";
+import { SampleNumberPanel } from "./SampleNumberPanel";
 import { ssrStatusColor, ssrStatusBg } from "@/lib/status-colors";
 import {
   SSR_STATUSES, SSR_FILE_STAGES, ISSUE_TYPES,
@@ -139,17 +140,25 @@ export function SsrDetailClient({
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 mt-4 bg-(--color-surface) border border-(--color-line) rounded-xl p-1 w-fit">
-        {(["details", "costing"] as const).map((tab) => (
+        {(["details", "journey", "costing"] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
               activeTab === tab
                 ? "bg-(--color-thread-soft) text-(--color-thread)"
                 : "text-(--color-ink-soft)"
             }`}>
-            {tab === "details" ? "Sample Details" : "📊 Costing"}
+            {tab === "details" ? "Sample Details" : tab === "journey" ? "📸 Journey" : "📊 Costing"}
           </button>
         ))}
       </div>
+
+      {/* Journey tab - Point 5 */}
+      {activeTab === "journey" && (
+        <div className="space-y-4">
+          {/* Sample Number Assignment - Point 6 */}
+          <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
+        </div>
+      )}
 
       {/* Costing tab */}
       {activeTab === "costing" && (
