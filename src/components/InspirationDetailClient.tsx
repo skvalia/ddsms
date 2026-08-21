@@ -169,10 +169,16 @@ export function InspirationDetailClient({
           <h2 className="text-sm font-bold uppercase tracking-wider text-stone-400">
             Sketches ({sketches.length} of {insp.design_count || "?"} planned)
           </h2>
-          <Link href={`/sketches/new?inspiration=${insp.id}`}
-            className="text-sm font-semibold text-amber-700">
-            + Add Sketch
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/inspirations/${insp.id}/bulk-sketches`}
+              className="text-xs font-semibold text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">
+              + Bulk Upload
+            </Link>
+            <Link href={`/sketches/new?inspiration=${insp.id}`}
+              className="text-xs font-semibold text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">
+              + Single Sketch
+            </Link>
+          </div>
         </div>
 
         {sketches.length > 0 ? (
