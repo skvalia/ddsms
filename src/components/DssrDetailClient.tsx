@@ -25,7 +25,7 @@ import {
   type ActivityLog,
   type DssrStatus,
 } from "@/types/database";
-import { ChevronLeft, Send, Loader2, Plus, Pencil } from "lucide-react";
+import { ChevronLeft, Send, Loader2, Plus, Pencil, ChevronDown, ChevronUp } from "lucide-react";
 import { SketchesPanel } from "./SketchesPanel";
 import { format } from "date-fns";
 
@@ -51,6 +51,9 @@ export function DssrDetailClient({
   supabaseUrl: string;
 }) {
   const router = useRouter();
+  const [ssrsOpen, setSsrsOpen] = useState(true);
+  const [filesOpen, setFilesOpen] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const supabase = createClient();
 
   const [currentStatus, setCurrentStatus] = useState<DssrStatus>(dssr.status);
@@ -288,11 +291,14 @@ export function DssrDetailClient({
 
       {/* All SSRs */}
       <div className="mb-5">
-        <div className="flex items-center justify-between mb-3">
+        <button onClick={() => setSsrsOpen(v => !v)}
+          className="w-full flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-(--color-ink-soft)">
             All SSRs ({ssrs.length})
           </h2>
-          <Link
+          {ssrsOpen ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" /> : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
+        </button>
+          {ssrsOpen && <Link
             href={`/ssr/new?dssr=${dssr.id}`}
             className="flex items-center gap-1 text-xs font-medium text-(--color-thread)"
           >
