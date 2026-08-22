@@ -168,7 +168,6 @@ export function SsrDetailClient({
       {activeTab === "journey" && (
         <div className="space-y-4">
           <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
-          <LinkedDssrsPanel ssrId={ssr.id} initialLinked={linkedDssrs} />
           <JourneyPanel
             ssrId={ssr.id}
             journeyData={journeyData}
@@ -212,6 +211,8 @@ export function SsrDetailClient({
               </div>
             )}
           </div>
+
+          <LinkedDssrsPanel ssrId={ssr.id} initialLinked={linkedDssrs} />
 
           <TrackingPanel ssr={ssr}
             autoEdit={
