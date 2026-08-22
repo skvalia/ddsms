@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FilterBar } from "./FilterBar";
 import { DssrCard } from "./DssrCard";
 import { dssrStatusColor, dssrStatusBg } from "@/lib/status-colors";
 import { DSSR_STATUSES, type Dssr, type DssrStatus } from "@/types/database";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import Link from "next/link";
 
 function CollapsibleGroup({ status, items }: { status: string; items: Dssr[] }) {
@@ -17,15 +16,16 @@ function CollapsibleGroup({ status, items }: { status: string; items: Dssr[] }) 
       <button onClick={() => setOpen(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-(--color-paper) transition-colors">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <span className="text-sm font-semibold">{status}</span>
           <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
             style={{ color, backgroundColor: bg }}>
             {items.length}
           </span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" />
-               : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
+        {open
+          ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" />
+          : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
       </button>
       {open && (
         <div className="border-t border-(--color-line) p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -60,7 +60,6 @@ export function DssrListClient({
     });
   }, [search, statusFilter, initialData]);
 
-  // Group by status
   const grouped = useMemo(() => {
     const g: Record<string, Dssr[]> = {};
     filtered.forEach(d => {
@@ -72,13 +71,12 @@ export function DssrListClient({
 
   return (
     <div className="px-4 md:px-8 py-6 md:py-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="font-(family-name:--font-display) text-2xl font-semibold tracking-tight">
             Design Records
           </h1>
-          <p className="text-sm text-(--color-ink-soft) mt-0.5">{filtered.length} designs</p>
+          <p className="text-sm text-(--color-ink-soft) mt-0.5">{filtered.length} of {initialData.length} designs</p>
         </div>
         <Link href="/dssr/new"
           className="bg-(--color-thread) text-white px-4 py-2 rounded-xl text-sm font-semibold">
@@ -86,18 +84,31 @@ export function DssrListClient({
         </Link>
       </div>
 
-      {/* Search + filter */}
-      <div className="mb-5">
-        <FilterBar
-          search={search}
-          onSearch={setSearch}
-          statusFilter={statusFilter}
-          onStatusFilter={(s) => setStatusFilter(s as DssrStatus | "All")}
-          statuses={["All", ...DSSR_STATUSES]}
-          statusColors={dssrStatusColor}
-          statusBgs={dssrStatusBg}
-          count={filtered.length}
-        />
+      {/* Search + status filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--color-ink-soft)" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search design no, DSSR no, party..."
+            className="w-full rounded-xl border border-(--color-line) bg-(--color-surface) pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-(--color-thread)"
+          />
+          {search && (
+            <button onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-(--color-ink-soft)">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as DssrStatus | "All")}
+          className="rounded-xl border border-(--color-line) bg-(--color-surface) px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-(--color-thread)"
+        >
+          <option value="All">All statuses</option>
+          {DSSR_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
 
       {filtered.length === 0 ? (
