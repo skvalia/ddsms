@@ -11,6 +11,7 @@ import { TrackingPanel } from "./TrackingPanel";
 import { CostingPanel } from "./CostingPanel";
 import { SampleNumberPanel } from "./SampleNumberPanel";
 import { JourneyPanel } from "./JourneyPanel";
+import { LinkedDssrsPanel } from "./LinkedDssrsPanel";
 import { ssrStatusColor, ssrStatusBg } from "@/lib/status-colors";
 import {
   SSR_STATUSES, SSR_FILE_STAGES, ISSUE_TYPES,
@@ -167,6 +168,7 @@ export function SsrDetailClient({
       {activeTab === "journey" && (
         <div className="space-y-4">
           <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
+          <LinkedDssrsPanel ssrId={ssr.id} initialLinked={linkedDssrs} />
           <JourneyPanel
             ssrId={ssr.id}
             journeyData={journeyData}
