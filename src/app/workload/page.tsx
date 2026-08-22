@@ -60,7 +60,7 @@ export default function WorkloadPage() {
           .in("status", ["Draft", "In Progress"]),
         supabase.from("ssr").select("id, ssr_number, design_number, status, machine_type, party:parties(name)")
           .not("machine_type", "is", null)
-          .not("status", "in", "("Done","Completed")")
+          .not("status", "in", '("Done","Completed")')
           .order("machine_type"),
       ]);
 
