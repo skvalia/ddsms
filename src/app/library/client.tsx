@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AppShell } from "@/components/AppShell";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, X, ChevronLeft } from "lucide-react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
@@ -11,23 +12,30 @@ function photoUrl(bucket: string, path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 }
 
-function Stage({ title, count, children, emoji }: { title: string; count: number; children: React.ReactNode; emoji: string }) {
+function Stage({ title, count, children, emoji, href }: { title: string; count: number; children: React.ReactNode; emoji: string; href: string }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="mb-6">
-      <button onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 mb-3 w-full text-left">
-        <span className="text-xs font-bold uppercase tracking-wider text-stone-400">{emoji} {title} ({count})</span>
-        {open ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
-        <Link href={`/${title.toLowerCase()}`} onClick={e => e.stopPropagation()}
-          className="ml-auto text-xs text-amber-700 font-medium">View all →</Link>
-      </button>
-      {open && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">{children}</div>}
+      <div className="flex items-center gap-2 mb-3">
+        <button onClick={() => setOpen(v => !v)}
+          className="flex items-center gap-2 flex-1 text-left">
+          <span className="text-sm font-bold text-stone-700">{emoji} {title}</span>
+          <span className="text-xs text-stone-400 font-medium">({count})</span>
+          {open ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
+        </button>
+        <Link href={href} className="text-xs text-amber-700 font-medium shrink-0">View all →</Link>
+      </div>
+      {open && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          {children}
+        </div>
+      )}
     </div>
+    </AppShell>
   );
 }
 
-export function LibraryContent() {
+export function LibraryContent({ userName = "User" }: { userName?: string }) {
   const supabase = createClient();
   const [search, setSearch] = useState("");
   const [inspirations, setInspirations] = useState<any[]>([]);
@@ -75,7 +83,11 @@ export function LibraryContent() {
   );
 
   return (
+    <AppShell userName={userName}>
     <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+      <Link href="/" className="flex items-center gap-1 text-sm text-stone-500 mb-4 -ml-1">
+        <ChevronLeft className="w-4 h-4" /> Dashboard
+      </Link>
       <h1 className="text-2xl font-bold tracking-tight mb-1">Design Library</h1>
       <p className="text-sm text-stone-500 mb-5">Visual overview across the full design pipeline</p>
 
@@ -87,7 +99,7 @@ export function LibraryContent() {
         {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"><X className="w-4 h-4" /></button>}
       </div>
 
-      <Stage title="inspirations" count={filteredI.length} emoji="💡">
+      <Stage title="Inspirations" count={filteredI.length} emoji="💡" href="/inspirations">
         {filteredI.map((insp: any) => (
           <Link key={insp.id} href={`/inspirations/${insp.id}`}
             className="bg-white border border-stone-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
@@ -102,7 +114,7 @@ export function LibraryContent() {
         ))}
       </Stage>
 
-      <Stage title="sketches" count={filteredS.length} emoji="✏️">
+      <Stage title="Sketches" count={filteredS.length} emoji="✏️" href="/sketches">
         {filteredS.map((s: any) => (
           <Link key={s.id} href={`/sketches/${s.id}`}
             className="bg-white border border-stone-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
@@ -118,7 +130,7 @@ export function LibraryContent() {
         ))}
       </Stage>
 
-      <Stage title="dssr" count={filteredD.length} emoji="🎨">
+      <Stage title="Designs (DSSR)" count={filteredD.length} emoji="🎨" href="/dssr">
         {filteredD.map((d: any) => {
           const imgFile = (d.files ?? []).find((f: any) => ["jpg","jpeg","png","webp"].includes(f.file_type?.toLowerCase() || ""));
           return (
@@ -137,5 +149,6 @@ export function LibraryContent() {
         })}
       </Stage>
     </div>
+    </AppShell>
   );
 }
