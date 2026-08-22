@@ -10,14 +10,10 @@ export default async function DssrPage({
 }) {
   const { status } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   const { data: profile } = await supabase
-    .from("users")
-    .select("full_name")
-    .eq("id", user?.id ?? "")
-    .maybeSingle();
+    .from("users").select("full_name")
+    .eq("id", user?.id ?? "").maybeSingle();
   const userName = profile?.full_name || user?.email || "User";
 
   const { data } = await supabase
@@ -28,17 +24,7 @@ export default async function DssrPage({
 
   return (
     <AppShell userName={userName}>
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8">
-        <div className="mb-1">
-          <h1 className="font-(family-name:--font-display) text-2xl font-semibold tracking-tight">
-            Design Development Request Register
-          </h1>
-          <p className="text-sm text-(--color-ink-soft) mt-1 mb-4">
-            Master design records with version history
-          </p>
-        </div>
-        <DssrListClient initialData={(data as Dssr[]) ?? []} initialStatus={status} />
-      </div>
+      <DssrListClient initialData={(data as Dssr[]) ?? []} initialStatus={status} />
     </AppShell>
   );
 }
