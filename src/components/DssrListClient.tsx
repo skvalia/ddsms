@@ -3,9 +3,38 @@
 import { useState, useMemo } from "react";
 import { FilterBar } from "./FilterBar";
 import { DssrCard } from "./DssrCard";
-import { StatusPill } from "./StatusPill";
 import { dssrStatusColor, dssrStatusBg } from "@/lib/status-colors";
 import { DSSR_STATUSES, type Dssr, type DssrStatus } from "@/types/database";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import Link from "next/link";
+
+function CollapsibleGroup({ status, items }: { status: string; items: Dssr[] }) {
+  const [open, setOpen] = useState(false);
+  const color = dssrStatusColor[status as DssrStatus] || "#8a8478";
+  const bg = dssrStatusBg[status as DssrStatus] || "#f1efec";
+  return (
+    <div className="bg-(--color-surface) border border-(--color-line) rounded-2xl overflow-hidden mb-3">
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-(--color-paper) transition-colors">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+          <span className="text-sm font-semibold">{status}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+            style={{ color, backgroundColor: bg }}>
+            {items.length}
+          </span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" />
+               : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
+      </button>
+      {open && (
+        <div className="border-t border-(--color-line) p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {items.map(dssr => <DssrCard key={dssr.id} dssr={dssr} />)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DssrListClient({
   initialData,
@@ -20,70 +49,69 @@ export function DssrListClient({
   );
 
   const filtered = useMemo(() => {
-    let rows = initialData;
-    if (statusFilter !== "All") {
-      rows = rows.filter((r) => r.status === statusFilter);
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.design_number?.toLowerCase().includes(q) ||
-          r.dssr_number?.toLowerCase().includes(q) ||
-          r.designer?.toLowerCase().includes(q) ||
-          r.party?.name?.toLowerCase().includes(q)
-      );
-    }
-    return rows;
-  }, [initialData, search, statusFilter]);
+    return initialData.filter((d) => {
+      const matchSearch =
+        !search ||
+        d.design_number?.toLowerCase().includes(search.toLowerCase()) ||
+        d.dssr_number?.toLowerCase().includes(search.toLowerCase()) ||
+        (d.party as any)?.name?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "All" || d.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [search, statusFilter, initialData]);
+
+  // Group by status
+  const grouped = useMemo(() => {
+    const g: Record<string, Dssr[]> = {};
+    filtered.forEach(d => {
+      if (!g[d.status]) g[d.status] = [];
+      g[d.status].push(d);
+    });
+    return g;
+  }, [filtered]);
 
   return (
-    <div>
-      <FilterBar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search design no, party, designer..."
-        addHref="/dssr/new"
-        addLabel="New DSSR"
-      >
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          <button
-            onClick={() => setStatusFilter("All")}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              statusFilter === "All"
-                ? "bg-(--color-ink) text-white border-(--color-ink)"
-                : "border-(--color-line) text-(--color-ink-soft) bg-(--color-surface)"
-            }`}
-          >
-            All ({initialData.length})
-          </button>
-          {DSSR_STATUSES.map((status) => {
-            const count = initialData.filter((r) => r.status === status).length;
-            const active = statusFilter === status;
-            return (
-              <button key={status} onClick={() => setStatusFilter(status)} className="shrink-0">
-                <StatusPill
-                  label={`${status} (${count})`}
-                  color={active ? "#fff" : dssrStatusColor[status]}
-                  bg={active ? dssrStatusColor[status] : dssrStatusBg[status]}
-                />
-              </button>
-            );
-          })}
+    <div className="px-4 md:px-8 py-6 md:py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="font-(family-name:--font-display) text-2xl font-semibold tracking-tight">
+            Design Records
+          </h1>
+          <p className="text-sm text-(--color-ink-soft) mt-0.5">{filtered.length} designs</p>
         </div>
-      </FilterBar>
+        <Link href="/dssr/new"
+          className="bg-(--color-thread) text-white px-4 py-2 rounded-xl text-sm font-semibold">
+          + New DSSR
+        </Link>
+      </div>
 
-      {filtered.length === 0 && (
+      {/* Search + filter */}
+      <div className="mb-5">
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          statusFilter={statusFilter}
+          onStatusFilter={(s) => setStatusFilter(s as DssrStatus | "All")}
+          statuses={["All", ...DSSR_STATUSES]}
+          statusColors={dssrStatusColor}
+          statusBgs={dssrStatusBg}
+          count={filtered.length}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
         <div className="text-center py-16 text-(--color-ink-soft)">
-          <p className="text-sm">No designs match your filters.</p>
+          <p className="text-4xl mb-3">📋</p>
+          <p className="text-sm">No design records found</p>
+        </div>
+      ) : (
+        <div>
+          {DSSR_STATUSES.filter(s => grouped[s]?.length > 0).map(status => (
+            <CollapsibleGroup key={status} status={status} items={grouped[status]} />
+          ))}
         </div>
       )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtered.map((dssr) => (
-          <DssrCard key={dssr.id} dssr={dssr} />
-        ))}
-      </div>
     </div>
   );
 }
