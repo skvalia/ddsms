@@ -291,13 +291,14 @@ export function DssrDetailClient({
 
       {/* All SSRs */}
       <div className="mb-5">
-        <button onClick={() => setSsrsOpen(v => !v)}
-          className="w-full flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-(--color-ink-soft)">
-            All SSRs ({ssrs.length})
-          </h2>
-          {ssrsOpen ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" /> : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
-        </button>
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => setSsrsOpen(v => !v)}
+            className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-(--color-ink-soft)">
+              All SSRs ({ssrs.length})
+            </h2>
+            {ssrsOpen ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" /> : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
+          </button>
           <Link
             href={`/ssr/new?dssr=${dssr.id}`}
             className="flex items-center gap-1 text-xs font-medium text-(--color-thread)"
@@ -305,7 +306,7 @@ export function DssrDetailClient({
             <Plus className="w-3.5 h-3.5" /> New SSR
           </Link>
         </div>
-        {ssrs.length > 0 ? (
+        {ssrsOpen && (ssrs.length > 0 ? (
           <div className="space-y-2">
             {ssrs.map((ssr) => (
               <SsrCard key={ssr.id} ssr={ssr} />
@@ -315,7 +316,7 @@ export function DssrDetailClient({
           <p className="text-sm text-(--color-ink-soft) bg-(--color-surface) border border-(--color-line) rounded-2xl p-4">
             No sampling executions yet for this design.
           </p>
-        )}
+        ))}
       </div>
 
       {/* Activity timeline */}
