@@ -22,8 +22,10 @@ import { format } from "date-fns";
 
 export function SsrDetailClient({
   ssr, files, history, comments, userId,
+  linkedDssrs = [], designTracking = [], journeyData = [], supabaseUrl = "",
 }: {
   ssr: Ssr; files: SsrFile[]; history: StatusHistory[]; comments: Comment[]; userId: string;
+  linkedDssrs?: any[]; designTracking?: any[]; journeyData?: any[]; supabaseUrl?: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
