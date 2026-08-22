@@ -13,43 +13,45 @@ export default async function WorkloadPage() {
   const [
     { data: designers },
     { data: artists },
-    { data: pendingDssr },
+    { data: allDssr },
     { data: pendingSketches },
-    { data: pendingSsr },
   ] = await Promise.all([
     supabase.from("designers").select("id, name").order("name"),
     supabase.from("sketch_artists").select("id, name").order("name"),
+    // Get ALL active DSSRs with machine type and designer
     supabase.from("dssr")
       .select("id, dssr_number, design_number, status, machine_type, designer_id, party:parties(name)")
-      .not("designer_id", "is", null)
-      .in("status", ["New", "CAD Development", "EMB Development", "Ready For Sampling"]),
+      .not("status", "eq", "Archived")
+      .order("created_at", { ascending: false })
+      .limit(500),
     supabase.from("sketches")
       .select("id, sketch_number, status, sketch_artist_id, inspiration:inspirations(concept_name)")
       .not("sketch_artist_id", "is", null)
       .in("status", ["Draft", "In Progress"]),
-    // Get SSRs with machine_type — join via dssr to get machine type even if not set on SSR directly
-    supabase.from("ssr")
-      .select("id, ssr_number, design_number, status, machine_type, dssr:dssr(machine_type), party:parties(name)")
-      .neq("status", "Done")
-      .neq("status", "Completed")
-      .order("created_at", { ascending: false })
-      .limit(500),
   ]);
 
-  // Resolve machine type: SSR own machine_type OR from linked DSSR
-  const ssrWithMachine = (pendingSsr ?? []).map((s: any) => ({
-    ...s,
-    resolved_machine_type: s.machine_type || s.dssr?.machine_type || null,
-  })).filter((s: any) => s.resolved_machine_type);
+  // Pending by designer (active DSSRs)
+  const pendingDssr = (allDssr ?? []).filter((d: any) =>
+    d.designer_id && ["New", "CAD Development", "EMB Development", "Ready For Sampling"].includes(d.status)
+  );
+
+  // Group ALL active DSSRs by machine type
+  const dssrByMachine: Record<string, any[]> = {};
+  (allDssr ?? []).forEach((d: any) => {
+    if (d.machine_type) {
+      if (!dssrByMachine[d.machine_type]) dssrByMachine[d.machine_type] = [];
+      dssrByMachine[d.machine_type].push(d);
+    }
+  });
 
   return (
     <AppShell userName={userName}>
       <WorkloadClient
         designers={(designers as any[]) ?? []}
         artists={(artists as any[]) ?? []}
-        pendingDssr={(pendingDssr as any[]) ?? []}
+        pendingDssr={pendingDssr}
         pendingSketches={(pendingSketches as any[]) ?? []}
-        ssrWithMachine={ssrWithMachine}
+        dssrByMachine={dssrByMachine}
       />
     </AppShell>
   );
