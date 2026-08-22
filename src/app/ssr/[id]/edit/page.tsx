@@ -29,6 +29,9 @@ export default function EditSsrPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [parties, setParties] = useState<SelectOption[]>([]);
+  const [machineTypes, setMachineTypes] = useState<SelectOption[]>([]);
+  const [machineTypeOverride, setMachineTypeOverride] = useState<string | null>(null);
+  const [dssrMachineType, setDssrMachineType] = useState<string | null>(null);
   const [fabrics, setFabrics] = useState<SelectOption[]>([]);
   const [yarns, setYarns] = useState<SelectOption[]>([]);
 
@@ -48,12 +51,14 @@ export default function EditSsrPage() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: ssr }, { data: p }, { data: f }, { data: y }] = await Promise.all([
-        supabase.from("ssr").select("*").eq("id", params.id).maybeSingle(),
+      const [{ data: ssr }, { data: p }, { data: f }, { data: y }, { data: mt }] = await Promise.all([
+        supabase.from("ssr").select("*, dssr:dssr(machine_type)").eq("id", params.id).maybeSingle(),
         supabase.from("parties").select("id, name").order("name"),
         supabase.from("fabrics").select("id, name").order("name"),
         supabase.from("yarns").select("id, name").order("name"),
+        supabase.from("machine_types").select("id, name").order("name"),
       ]);
+      setMachineTypes(mt ?? []);
       setParties(p ?? []);
       setFabrics(f ?? []);
       setYarns(y ?? []);
@@ -72,6 +77,8 @@ export default function EditSsrPage() {
         setRemarks(ssr.remarks || "");
         setDyeingRequired(ssr.dyeing_required || false);
         setDyeingName(ssr.dyeing_name || "");
+        setMachineTypeOverride(ssr.machine_type_override || null);
+        setDssrMachineType((ssr as any).dssr?.machine_type || null);
       }
       setLoading(false);
     })();
@@ -94,6 +101,7 @@ export default function EditSsrPage() {
       machine: machine || null,
       operator: operator || null,
       remarks: remarks || null,
+      machine_type_override: machineTypeOverride || null,
       dyeing_required: dyeingRequired,
       dyeing_name: dyeingName || null,
     }).eq("id", params.id);
@@ -155,6 +163,14 @@ export default function EditSsrPage() {
           <Field label="Operator">
             <input value={operator} onChange={(e) => setOperator(e.target.value)} className={INPUT} />
           </Field>
+          <Field label="Machine Type Override"
+            hint={dssrMachineType ? `DSSR machine type: ${dssrMachineType}. Override only if different.` : "Set if different from DSSR"}>
+            <select value={machineTypeOverride || ""} onChange={e => setMachineTypeOverride(e.target.value || null)} className={INPUT}>
+              <option value="">Use DSSR machine type{dssrMachineType ? ` (${dssrMachineType})` : ""}</option>
+              {machineTypes.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
+            </select>
+          </Field>
+
           <Field label="Remarks">
             <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className={INPUT + " resize-none"} />
           </Field>
