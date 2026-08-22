@@ -172,7 +172,6 @@ export function SsrDetailClient({
             journeyData={journeyData}
             initialTracking={designTracking}
             linkedDssrs={linkedDssrs}
-            sampleFiles={localFiles.filter((f: any) => ["jpg","jpeg","png","webp"].includes(f.file_type?.toLowerCase() || ""))}
           />
         </div>
       )}
