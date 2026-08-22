@@ -260,7 +260,7 @@ export function SsrDetailClient({
           {/* Files */}
           <div className="bg-(--color-surface) border border-(--color-line) rounded-2xl p-4 mb-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-(--color-ink-soft) mb-1">
-              Sample Journey — Photos &amp; Files
+              Output Files — CAD / EMB / DST / Photos
             </h2>
             <p className="text-xs text-(--color-ink-soft) mb-3">
               Every concept, sketch, EMB and sample photo is tagged to a stage so the full development sequence is preserved.
