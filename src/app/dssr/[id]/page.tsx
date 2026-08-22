@@ -23,7 +23,7 @@ export default async function DssrDetailPage({
     { data: comments },
     { data: activity },
     { data: versions },
-    { data: sketches },
+    { data: sketchesByDssr },
   ] = await Promise.all([
     supabase.from("dssr").select("*, party:parties(*)").eq("id", id).maybeSingle(),
     supabase.from("dssr_files").select("*").eq("dssr_id", id).order("created_at", { ascending: false }),
@@ -36,6 +36,20 @@ export default async function DssrDetailPage({
 
   if (!dssr) return notFound();
 
+  // Also get sketch linked via old dssr.sketch_id field
+  let allSketches = sketchesByDssr ?? [];
+  if ((dssr as any).sketch_id) {
+    const linkedIds = allSketches.map((s: any) => s.id);
+    if (!linkedIds.includes((dssr as any).sketch_id)) {
+      const { data: oldSketch } = await supabase
+        .from("sketches")
+        .select("*")
+        .eq("id", (dssr as any).sketch_id)
+        .maybeSingle();
+      if (oldSketch) allSketches = [oldSketch, ...allSketches];
+    }
+  }
+
   return (
     <AppShell userName={userName}>
       <DssrDetailClient
@@ -45,7 +59,7 @@ export default async function DssrDetailPage({
         comments={(comments as any[]) ?? []}
         activity={(activity as any[]) ?? []}
         versions={(versions as any[]) ?? []}
-        sketches={(sketches as any[]) ?? []}
+        sketches={allSketches as any[]}
         userId={user?.id ?? ""}
         supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
       />
