@@ -16,6 +16,8 @@ export default async function SsrDetailPage({
     .eq("id", user?.id ?? "").maybeSingle();
   const userName = profile?.full_name || user?.email || "User";
 
+  const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
   const [
     { data: ssr },
     { data: files },
@@ -28,14 +30,89 @@ export default async function SsrDetailPage({
     supabase.from("ssr_files").select("*").eq("ssr_id", id).order("created_at", { ascending: false }),
     supabase.from("status_history").select("*").eq("ssr_id", id).order("changed_at", { ascending: false }),
     supabase.from("comments").select("*").eq("ssr_id", id).order("created_at", { ascending: false }),
-    supabase.from("ssr_dssrs").select("*, dssr:dssr(*, party:parties(*), sketches:sketches(*))").eq("ssr_id", id),
+    supabase.from("ssr_dssrs").select("*, dssr:dssr(*)").eq("ssr_id", id),
     supabase.from("ssr_design_tracking").select("*, dssr:dssr(dssr_number, design_number), sketch:sketches(sketch_number, photo_path)").eq("ssr_id", id),
   ]);
 
   if (!ssr) return notFound();
 
-  // Build journey data: inspiration → sketch → sample
-  const journeyData = await buildJourney(supabase, ssr as any, linkedDssrs as any[]);
+  // Collect all DSSR IDs linked to this SSR
+  const dssrIds: string[] = [];
+  // From junction table
+  (linkedDssrs ?? []).forEach((ld: any) => { if (ld.dssr_id) dssrIds.push(ld.dssr_id); });
+  // From direct SSR.dssr_id link (old method)
+  if ((ssr as any).dssr_id && !dssrIds.includes((ssr as any).dssr_id)) {
+    dssrIds.push((ssr as any).dssr_id);
+  }
+
+  // Build journey data from all linked DSSRs
+  const journeyData: any[] = [];
+  const seenInspirations = new Set<string>();
+  const seenSketches = new Set<string>();
+
+  if (dssrIds.length > 0) {
+    // Get all sketches linked to these DSSRs (via dssr_id OR via dssr.sketch_id)
+    const { data: sketchesByDssrId } = await supabase
+      .from("sketches")
+      .select("*, inspiration:inspirations(id, concept_name, photo_path)")
+      .in("dssr_id", dssrIds);
+
+    // Also get sketches linked via old dssr.sketch_id
+    const { data: dssrRows } = await supabase
+      .from("dssr")
+      .select("sketch_id")
+      .in("id", dssrIds)
+      .not("sketch_id", "is", null);
+
+    const oldSketchIds = (dssrRows ?? []).map((d: any) => d.sketch_id).filter(Boolean);
+    let oldSketches: any[] = [];
+    if (oldSketchIds.length > 0) {
+      const { data: os } = await supabase
+        .from("sketches")
+        .select("*, inspiration:inspirations(id, concept_name, photo_path)")
+        .in("id", oldSketchIds);
+      oldSketches = os ?? [];
+    }
+
+    const allSketches = [...(sketchesByDssrId ?? []), ...oldSketches];
+
+    for (const s of allSketches) {
+      if (seenSketches.has(s.id)) continue;
+      seenSketches.add(s.id);
+
+      // Add inspiration photo (once per inspiration)
+      if (s.inspiration?.photo_path && !seenInspirations.has(s.inspiration.id)) {
+        seenInspirations.add(s.inspiration.id);
+        journeyData.push({
+          type: "inspiration",
+          label: s.inspiration.concept_name,
+          photoUrl: `${SURL}/storage/v1/object/public/inspiration-files/${s.inspiration.photo_path}`,
+        });
+      }
+
+      // Add sketch photo
+      if (s.photo_path) {
+        journeyData.push({
+          type: "sketch",
+          label: s.sketch_number || "Sketch",
+          designNumber: s.design_number,
+          photoUrl: `${SURL}/storage/v1/object/public/sketch-files/${s.photo_path}`,
+        });
+      }
+    }
+  }
+
+  // Add final sample photos from SSR files
+  const samplePhotos = (files ?? []).filter((f: any) =>
+    ["jpg","jpeg","png","webp"].includes(f.file_type?.toLowerCase() || "")
+  );
+  samplePhotos.forEach((f: any) => {
+    journeyData.push({
+      type: "sample",
+      label: "Sample Photo",
+      photoUrl: `${SURL}/storage/v1/object/public/ssr-files/${f.file_path}`,
+    });
+  });
 
   return (
     <AppShell userName={userName}>
@@ -48,50 +125,8 @@ export default async function SsrDetailPage({
         linkedDssrs={(linkedDssrs as any[]) ?? []}
         designTracking={(designTracking as any[]) ?? []}
         journeyData={journeyData}
-        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
+        supabaseUrl={SURL}
       />
     </AppShell>
   );
-}
-
-async function buildJourney(supabase: any, ssr: any, linkedDssrs: any[]) {
-  const journey: any[] = [];
-  const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-
-  // Get all DSSRs linked to this SSR
-  const dssrIds = (linkedDssrs ?? []).map((ld: any) => ld.dssr_id).filter(Boolean);
-  if (ssr?.dssr_id && !dssrIds.includes(ssr.dssr_id)) dssrIds.push(ssr.dssr_id);
-
-  if (dssrIds.length === 0) return journey;
-
-  // Get sketches linked to those DSSRs
-  const { data: sketches } = await supabase
-    .from("sketches")
-    .select("*, inspiration:inspirations(id, concept_name, photo_path)")
-    .in("dssr_id", dssrIds);
-
-  // Build journey items
-  const seen = new Set();
-  for (const s of (sketches ?? [])) {
-    // Inspiration photo
-    if (s.inspiration?.photo_path && !seen.has(s.inspiration.id)) {
-      seen.add(s.inspiration.id);
-      journey.push({
-        type: "inspiration",
-        label: s.inspiration.concept_name,
-        photoUrl: `${SURL}/storage/v1/object/public/inspiration-files/${s.inspiration.photo_path}`,
-      });
-    }
-    // Sketch photo
-    if (s.photo_path) {
-      journey.push({
-        type: "sketch",
-        label: s.sketch_number || "Sketch",
-        designNumber: s.design_number,
-        photoUrl: `${SURL}/storage/v1/object/public/sketch-files/${s.photo_path}`,
-      });
-    }
-  }
-
-  return journey;
 }
