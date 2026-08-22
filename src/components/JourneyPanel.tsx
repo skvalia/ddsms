@@ -28,13 +28,11 @@ export function JourneyPanel({
   journeyData,
   initialTracking,
   linkedDssrs,
-  sampleFiles,
 }: {
   ssrId: string;
   journeyData: JourneyItem[];
   initialTracking: DesignTracking[];
   linkedDssrs: any[];
-  sampleFiles: any[];
 }) {
   const supabase = createClient();
   const [tracking, setTracking] = useState(initialTracking);
@@ -55,18 +53,14 @@ export function JourneyPanel({
     setSaving(false);
   }
 
-  const samplePhotos = sampleFiles.filter((f: any) =>
-    ["jpg","jpeg","png","webp"].includes(f.file_type?.toLowerCase() || "")
-  );
-
   return (
     <div className="space-y-5">
 
       {/* ── Photo Journey ── */}
-      {(journeyData.length > 0 || samplePhotos.length > 0) && (
+      {journeyData.length > 0 && (
         <div className="bg-(--color-surface) border border-(--color-line) rounded-2xl p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-(--color-ink-soft) mb-3">
-            📸 Design Journey
+            📸 Design Journey — Inspiration → Sketch → Sample
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {journeyData.map((item, i) => (
@@ -80,34 +74,14 @@ export function JourneyPanel({
                 <p className="text-[10px] text-(--color-ink-soft) mt-1 max-w-24 truncate">{item.label}</p>
                 {item.designNumber && <p className="text-[10px] text-amber-700 font-medium">{item.designNumber}</p>}
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                  item.type === "inspiration" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
-                }`}>{item.type}</span>
+                  item.type === "inspiration" ? "bg-yellow-100 text-yellow-700" :
+                  item.type === "sketch" ? "bg-blue-100 text-blue-700" :
+                  "bg-green-100 text-green-700"
+                }`}>{item.type === "sample" ? "final" : item.type}</span>
               </div>
             ))}
 
-            {/* Arrow separator */}
-            {journeyData.length > 0 && samplePhotos.length > 0 && (
-              <div className="shrink-0 flex items-center text-2xl text-(--color-ink-soft)">→</div>
-            )}
-
-            {/* Sample photos */}
-            {samplePhotos.map((f: any) => (
-              <div key={f.id} className="shrink-0 text-center">
-                <button onClick={() => setLightbox(`${SUPABASE_URL}/storage/v1/object/public/ssr-files/${f.file_path}`)}
-                  className="w-24 h-24 rounded-xl overflow-hidden bg-(--color-paper) border border-(--color-line)">
-                  <img src={`${SUPABASE_URL}/storage/v1/object/public/ssr-files/${f.file_path}`}
-                    alt="sample" className="w-full h-full object-cover" />
-                </button>
-                <p className="text-[10px] text-(--color-ink-soft) mt-1">Sample Photo</p>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">final</span>
-              </div>
-            ))}
           </div>
-          {journeyData.length === 0 && samplePhotos.length === 0 && (
-            <p className="text-sm text-(--color-ink-soft) text-center py-4">
-              Link this SSR to a DSSR with sketches to see the journey
-            </p>
-          )}
         </div>
       )}
 
