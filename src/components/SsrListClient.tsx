@@ -18,7 +18,7 @@ function CollapsibleStatusGroups({ ssrs }: { ssrs: Ssr[] }) {
   }, {} as Record<string, Ssr[]>);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
-    Object.fromEntries(Object.keys(grouped).map(s => [s, true]))
+    Object.fromEntries(Object.keys(grouped).map(s => [s, false]))
   );
 
   function toggle(status: string) {
