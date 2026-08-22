@@ -30,7 +30,8 @@ export default async function WorkloadPage() {
     // Get SSRs with machine_type — join via dssr to get machine type even if not set on SSR directly
     supabase.from("ssr")
       .select("id, ssr_number, design_number, status, machine_type, dssr:dssr(machine_type), party:parties(name)")
-      .not("status", "in", '("Done","Completed","Archived")')
+      .neq("status", "Done")
+      .neq("status", "Completed")
       .order("created_at", { ascending: false })
       .limit(500),
   ]);
