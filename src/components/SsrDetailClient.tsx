@@ -10,6 +10,7 @@ import { FileGallery, bucketPublicUrl } from "./FileGallery";
 import { TrackingPanel } from "./TrackingPanel";
 import { CostingPanel } from "./CostingPanel";
 import { SampleNumberPanel } from "./SampleNumberPanel";
+import { JourneyPanel } from "./JourneyPanel";
 import { ssrStatusColor, ssrStatusBg } from "@/lib/status-colors";
 import {
   SSR_STATUSES, SSR_FILE_STAGES, ISSUE_TYPES,
@@ -164,6 +165,13 @@ export function SsrDetailClient({
       {activeTab === "journey" && (
         <div className="space-y-4">
           <SampleNumberPanel ssrId={ssr.id} currentSampleNo={ssr.sample_no} />
+          <JourneyPanel
+            ssrId={ssr.id}
+            journeyData={journeyData}
+            initialTracking={designTracking}
+            linkedDssrs={linkedDssrs}
+            sampleFiles={localFiles.filter((f: any) => ["jpg","jpeg","png","webp"].includes(f.file_type?.toLowerCase() || ""))}
+          />
         </div>
       )}
 
