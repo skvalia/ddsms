@@ -298,7 +298,7 @@ export function DssrDetailClient({
           </h2>
           {ssrsOpen ? <ChevronUp className="w-4 h-4 text-(--color-ink-soft)" /> : <ChevronDown className="w-4 h-4 text-(--color-ink-soft)" />}
         </button>
-          {ssrsOpen && <Link
+          <Link
             href={`/ssr/new?dssr=${dssr.id}`}
             className="flex items-center gap-1 text-xs font-medium text-(--color-thread)"
           >
