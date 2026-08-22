@@ -24,12 +24,12 @@ export default async function WorkloadPage() {
     supabase.from("dssr")
       .select("id, dssr_number, design_number, status, machine_type, designer_id, party:parties(name)")
       .not("designer_id", "is", null)
-      .not("status", "in", "("Approved","Archived")"),
+      .neq("status", "Approved").neq("status", "Archived"),
     // Sketches assigned to artists but not complete
     supabase.from("sketches")
       .select("id, sketch_number, status, sketch_artist_id, inspiration:inspirations(concept_name)")
       .not("sketch_artist_id", "is", null)
-      .not("status", "in", "("Ready for DSSR","Completed")"),
+      .neq("status", "Ready for DSSR").neq("status", "Completed"),
     // Inspirations NOT assigned to any sketcher
     supabase.from("inspirations")
       .select("id, concept_name, season, assigned_sketcher_id, party:parties(name)")
